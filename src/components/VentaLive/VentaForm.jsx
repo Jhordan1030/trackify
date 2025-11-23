@@ -1,111 +1,133 @@
-// src/components/VentaLive/VentaForm.jsx
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { useInventario } from '../../hooks/useInventario';
+import { useState } from 'react';
+import { Plus, ShoppingCart, User as UserIcon, Truck } from 'lucide-react';
+import { PLATAFORMAS } from '../../utils/constants';
+import { ItemForm } from './ItemForm';
+import { calculateTotal } from '../../utils/helpers';
 
 export const VentaForm = ({ onRegistrarVenta, loading }) => {
-  const { obtenerInventario, inventario } = useInventario();
   const [formData, setFormData] = useState({
     usuario: '',
     plataforma: 'tiktok',
-    items: [{ skuId: '', cantidad: 1, precioUnitario: 0 }]
+    items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
   });
 
-  // Cargar inventario al montar el componente
-  useEffect(() => {
-    obtenerInventario();
-  }, []);
-
-  const handleInputChange = (e, index = null) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
-    if (index !== null) {
-      // Cambio en items
-      const updatedItems = [...formData.items];
-      updatedItems[index] = { ...updatedItems[index], [name]: value };
-      
-      // Si cambia el SKU, actualizar el precio automáticamente
-      if (name === 'skuId' && value) {
-        const skuSeleccionado = inventario.find(sku => sku.id === parseInt(value));
-        if (skuSeleccionado) {
-          updatedItems[index].precioUnitario = skuSeleccionado.precio_venta;
-        }
-      }
-      
-      setFormData(prev => ({ ...prev, items: updatedItems }));
-    } else {
-      // Cambio en campos principales
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const agregarItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { skuId: '', cantidad: 1, precioUnitario: 0 }]
+      [name]: value,
     }));
   };
 
-  const eliminarItem = (index) => {
-    if (formData.items.length > 1) {
-      setFormData(prev => ({
-        ...prev,
-        items: prev.items.filter((_, i) => i !== index)
-      }));
-    }
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...formData.items];
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+    };
+    setFormData(prev => ({
+      ...prev,
+      items: newItems,
+    }));
   };
 
-  const calcularTotal = () => {
-    return formData.items.reduce((total, item) => {
-      return total + (parseFloat(item.precioUnitario) * parseInt(item.cantidad));
-    }, 0);
+  const addItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      items: [...prev.items, { skuId: '', cantidad: 1, precioUnitario: '' }],
+    }));
+  };
+
+  const removeItem = (index) => {
+    if (formData.items.length === 1) return;
+    
+    const newItems = formData.items.filter((_, i) => i !== index);
+    setFormData(prev => ({
+      ...prev,
+      items: newItems,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.usuario || !formData.plataforma) {
-      alert('Por favor completa usuario y plataforma');
+    // Validación mejorada
+    const itemsValidos = formData.items.every(
+      item => item.skuId && item.cantidad && item.cantidad > 0 && item.precioUnitario && item.precioUnitario > 0
+    );
+
+    if (!itemsValidos) {
+      alert('Por favor completa todos los campos de los items. Asegúrate de que:\n- Cada item tenga un producto seleccionado\n- La cantidad sea mayor a 0\n- El precio unitario sea mayor a 0');
       return;
     }
 
-    // Validar items
-    for (const item of formData.items) {
-      if (!item.skuId || item.cantidad < 1 || item.precioUnitario <= 0) {
-        alert('Por favor completa todos los campos de los items correctamente');
-        return;
-      }
+    if (!formData.usuario.trim()) {
+      alert('Por favor ingresa el usuario del cliente');
+      return;
     }
 
-    try {
-      await onRegistrarVenta(formData);
-      // Limpiar formulario después de éxito
-      setFormData({
-        usuario: '',
-        plataforma: 'tiktok',
-        items: [{ skuId: '', cantidad: 1, precioUnitario: 0 }]
-      });
-    } catch (error) {
-      // Error manejado por el hook
-    }
+    // Preparar datos para enviar
+    const ventaData = {
+      usuario: formData.usuario.trim(),
+      plataforma: formData.plataforma,
+      items: formData.items.map(item => ({
+        skuId: parseInt(item.skuId),
+        cantidad: parseInt(item.cantidad),
+        precioUnitario: parseFloat(item.precioUnitario),
+      })),
+    };
+
+    console.log('📤 Enviando venta:', ventaData);
+
+    await onRegistrarVenta(ventaData);
+
+    // Reset form
+    setFormData({
+      usuario: '',
+      plataforma: 'tiktok',
+      items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
+    });
   };
 
+  const subtotal = calculateTotal(formData.items);
+  const costoEnvio = 2.5; // Costo fijo
+  const total = subtotal + costoEnvio;
+
+  // Verificar si el formulario puede enviarse
+  const canSubmit = formData.usuario.trim() && 
+    formData.items.every(item => item.skuId && item.cantidad > 0 && item.precioUnitario > 0);
+
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Registrar Venta</h3>
-      
-      <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center space-x-3">
+        <div className="p-2 md:p-3 bg-green-100 rounded-lg">
+          <ShoppingCart className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
+        </div>
+        <div>
+          <h3 className="text-lg md:text-xl font-semibold text-gray-900">Registrar Nueva Venta</h3>
+          <p className="text-xs md:text-sm text-gray-500">Completa los datos de la venta en vivo</p>
+        </div>
+      </div>
+
+      {/* Datos del Cliente */}
+      <div className="border-t border-gray-200 pt-4 md:pt-6">
+        <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
+          <UserIcon className="w-4 h-4 mr-2" />
+          Información del Cliente
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Usuario del Cliente *
+              Usuario *
             </label>
             <input
               type="text"
               name="usuario"
               value={formData.usuario}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               placeholder="ej: maria_tiktok"
               required
             />
@@ -119,125 +141,114 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
               name="plataforma"
               value={formData.plataforma}
               onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
             >
-              <option value="tiktok">TikTok</option>
-              <option value="instagram">Instagram</option>
-              <option value="facebook">Facebook</option>
-              <option value="whatsapp">WhatsApp</option>
-              <option value="web">Web</option>
+              {PLATAFORMAS.map(platform => (
+                <option key={platform.value} value={platform.value}>
+                  {platform.label}
+                </option>
+              ))}
             </select>
           </div>
         </div>
+      </div>
 
-        {/* Items de la venta */}
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-medium text-gray-900">Items de la Venta</h4>
-            <button
-              type="button"
-              onClick={agregarItem}
-              className="flex items-center space-x-1 text-blue-600 hover:text-blue-700"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Agregar Item</span>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {formData.items.map((item, index) => (
-              <div key={index} className="flex items-end space-x-4 p-4 border border-gray-200 rounded-lg">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Producto *
-                  </label>
-                  <select
-                    name="skuId"
-                    value={item.skuId}
-                    onChange={(e) => handleInputChange(e, index)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Seleccionar producto</option>
-                    {inventario.map(sku => (
-                      <option key={sku.id} value={sku.id}>
-                        {sku.producto_nombre} - {sku.sku_codigo} (Stock: {sku.stock_actual})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="w-24">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cantidad *
-                  </label>
-                  <input
-                    type="number"
-                    name="cantidad"
-                    value={item.cantidad}
-                    onChange={(e) => handleInputChange(e, index)}
-                    min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="w-32">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Precio Unitario *
-                  </label>
-                  <input
-                    type="number"
-                    name="precioUnitario"
-                    value={item.precioUnitario}
-                    onChange={(e) => handleInputChange(e, index)}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div className="w-20">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Subtotal
-                  </label>
-                  <div className="px-3 py-2 bg-gray-50 rounded-md text-sm font-medium">
-                    ${(item.cantidad * item.precioUnitario).toFixed(2)}
-                  </div>
-                </div>
-
-                {formData.items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => eliminarItem(index)}
-                    className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
+      {/* Items */}
+      <div className="border-t border-gray-200 pt-4 md:pt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+          <h4 className="font-medium text-gray-900 text-sm md:text-base">Productos</h4>
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm w-full sm:w-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Agregar Item</span>
+          </button>
         </div>
 
-        {/* Total */}
-        <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg mb-6">
-          <span className="text-lg font-semibold text-gray-900">Total:</span>
-          <span className="text-2xl font-bold text-green-600">
-            ${calcularTotal().toFixed(2)}
-          </span>
+        <div className="space-y-4">
+          {formData.items.map((item, index) => (
+            <ItemForm
+              key={index}
+              item={item}
+              index={index}
+              onChange={handleItemChange}
+              onRemove={removeItem}
+              canRemove={formData.items.length > 1}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Costo de Envío - SOLO INFORMATIVO */}
+      <div className="border-t border-gray-200 pt-4 md:pt-6">
+        <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
+          <Truck className="w-4 h-4 mr-2" />
+          Envío
+        </h4>
+        
+        <div className="w-full max-w-xs">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-gray-700">
+              <strong>Costo de envío:</strong> $2.50
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Este costo ya está incluido automáticamente en el total del pedido
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Resumen y Total */}
+      <div className="border-t border-gray-200 pt-4 md:pt-6">
+        <div className="bg-gray-50 rounded-lg p-3 md:p-4 space-y-2 mb-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Subtotal:</span>
+            <span className="font-medium text-gray-900">${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-600">Costo de Envío:</span>
+            <span className="font-medium text-gray-900">$2.50</span>
+          </div>
+          <div className="border-t border-gray-200 pt-2 mt-2">
+            <div className="flex items-center justify-between">
+              <span className="text-base md:text-lg font-medium text-gray-700">Total:</span>
+              <span className="text-xl md:text-2xl font-bold text-gray-900">${total.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !canSubmit}
+          className={`w-full py-3 px-4 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors text-sm md:text-base ${
+            (loading || !canSubmit) ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
         >
-          {loading ? 'Registrando Venta...' : 'Registrar Venta'}
+          {loading ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              Procesando...
+            </div>
+          ) : (
+            <div className="flex items-center justify-center">
+              <ShoppingCart className="w-4 h-4 md:w-5 md:h-5 mr-2" />
+              Registrar Venta (${total.toFixed(2)})
+            </div>
+          )}
         </button>
-      </form>
-    </div>
+
+        {/* Indicador de estado del formulario */}
+        {!canSubmit && (
+          <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-xs text-yellow-700 text-center">
+              Completa todos los campos obligatorios para registrar la venta
+            </p>
+          </div>
+        )}
+      </div>
+    </form>
   );
 };

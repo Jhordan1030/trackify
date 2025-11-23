@@ -1,121 +1,181 @@
-// src/services/api.js
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'https://trackify-backend-lake.vercel.app/api/v1';
 
-// Helper para las peticiones
-const fetchAPI = async (endpoint, options = {}) => {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const config = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
+class ApiService {
+  constructor() {
+    this.baseURL = API_URL;
+  }
+
+  async request(endpoint, options = {}) {
+    const url = `${this.baseURL}${endpoint}`;
+    
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    try {
+      console.log(`🔄 ${config.method || 'GET'} ${url}`);
+      const response = await fetch(url, config);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ Respuesta exitosa:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ Error en request:', error);
+      throw error;
+    }
+  }
+
+  // Métodos HTTP
+  get(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'GET' });
+  }
+
+  post(endpoint, body, options = {}) {
+    return this.request(endpoint, {
+      ...options,
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  put(endpoint, body, options = {}) {
+    return this.request(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  }
+
+  patch(endpoint, body, options = {}) {
+    return this.request(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    });
+  }
+
+  delete(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'DELETE' });
+  }
+
+  // === CLIENTES ===
+  clientes = {
+    listar: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return this.get(`/clientes${queryString ? `?${queryString}` : ''}`);
     },
-    ...options,
+    
+    buscar: (usuario, plataforma) => {
+      return this.get(`/clientes/buscar?usuario=${encodeURIComponent(usuario)}&plataforma=${encodeURIComponent(plataforma)}`);
+    },
+    
+    buscarPorNombre: (termino) => {
+      return this.get(`/clientes/buscar/${encodeURIComponent(termino)}`);
+    },
+    
+    obtener: (id) => {
+      return this.get(`/clientes/${id}`);
+    },
+    
+    crear: (data) => {
+      return this.post('/clientes', data);
+    },
+    
+    actualizar: (id, data) => {
+      return this.put(`/clientes/${id}`, data);
+    },
+    
+    eliminar: (id) => {
+      return this.delete(`/clientes/${id}`);
+    },
   };
 
-  if (config.body) {
-    config.body = JSON.stringify(config.body);
-  }
+  // === PRODUCTOS ===
+  productos = {
+    buscar: (termino) => {
+      // Usamos el endpoint de inventario/skus con filtro de búsqueda
+      return this.get(`/inventario/skus?search=${encodeURIComponent(termino)}&limit=10`);
+    },
+    
+    obtener: (id) => {
+      return this.get(`/productos/${id}`);
+    },
+  };
 
-  try {
-    const response = await fetch(url, config);
-    const data = await response.json();
+  // === INVENTARIO ===
+  inventario = {
+    listarSKUs: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return this.get(`/inventario/skus${queryString ? `?${queryString}` : ''}`);
+    },
+    
+    obtenerSKU: (skuId) => {
+      return this.get(`/inventario/sku/${skuId}`);
+    },
+    
+    crearSKU: (data) => {
+      return this.post('/inventario/sku', data);
+    },
+    
+    ajustarStock: (skuId, data) => {
+      return this.patch(`/inventario/sku/${skuId}/stock`, data);
+    },
+    
+    movimientos: () => {
+      return this.get('/inventario/movimientos');
+    },
+  };
 
-    if (!response.ok) {
-      throw new Error(data.message || 'Error en la petición');
-    }
+  // === PEDIDOS ===
+  pedidos = {
+    listar: (params = {}) => {
+      const queryString = new URLSearchParams(params).toString();
+      return this.get(`/pedidos${queryString ? `?${queryString}` : ''}`);
+    },
+    
+    obtener: (id) => {
+      return this.get(`/pedidos/${id}`);
+    },
+    
+    estadisticas: () => {
+      return this.get('/pedidos/estadisticas');
+    },
+    
+    registrarVentaLive: (data) => {
+      return this.post('/pedidos/live', data);
+    },
+    
+    actualizarEstado: (id, estado, data = {}) => {
+      return this.patch(`/pedidos/${id}/estado`, {
+        estado,
+        ...data
+      });
+    },
+  };
 
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-};
+  // === SISTEMA ===
+  sistema = {
+    health: () => {
+      return fetch(`${this.baseURL.replace('/api/v1', '')}/health`).then(r => r.json());
+    },
+    
+    info: () => {
+      return fetch(this.baseURL.replace('/api/v1', '')).then(r => r.json());
+    },
+  };
+}
 
-// Servicios para Clientes
-export const clientesService = {
-  buscarOCrear: (usuario, plataforma) => 
-    fetchAPI(`/clientes/buscar?usuario=${usuario}&plataforma=${plataforma}`),
+// Crear instancia única
+const apiInstance = new ApiService();
 
-  listar: (page = 1, limit = 50) => 
-    fetchAPI(`/clientes?page=${page}&limit=${limit}`),
-
-  obtener: (id) => 
-    fetchAPI(`/clientes/${id}`),
-
-  crear: (clienteData) => 
-    fetchAPI('/clientes', { method: 'POST', body: clienteData }),
-
-  actualizar: (id, clienteData) => 
-    fetchAPI(`/clientes/${id}`, { method: 'PUT', body: clienteData }),
-
-  eliminar: (id) => 
-    fetchAPI(`/clientes/${id}`, { method: 'DELETE' }),
-
-  buscar: (termino, page = 1, limit = 20) => 
-    fetchAPI(`/clientes/buscar/${termino}?page=${page}&limit=${limit}`),
-};
-
-// Servicios para Inventario
-export const inventarioService = {
-  listarSKUs: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
-    return fetchAPI(`/inventario/skus?${params}`);
-  },
-
-  obtenerSKU: (skuId) => 
-    fetchAPI(`/inventario/sku/${skuId}`),
-
-  crearSKU: (skuData) => 
-    fetchAPI('/inventario/sku', { method: 'POST', body: skuData }),
-
-  ajustarStock: (skuId, ajusteData) => 
-    fetchAPI(`/inventario/sku/${skuId}/stock`, { 
-      method: 'PATCH', 
-      body: ajusteData 
-    }),
-
-  obtenerMovimientos: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
-    return fetchAPI(`/inventario/movimientos?${params}`);
-  },
-};
-
-// Servicios para Pedidos
-export const pedidosService = {
-  listar: (filters = {}) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.append(key, value);
-      }
-    });
-    return fetchAPI(`/pedidos?${params}`);
-  },
-
-  obtener: (id) => 
-    fetchAPI(`/pedidos/${id}`),
-
-  registrarVenta: (ventaData) => 
-    fetchAPI('/pedidos/live', { method: 'POST', body: ventaData }),
-
-  actualizarEstado: (id, nuevoEstado) => 
-    fetchAPI(`/pedidos/${id}/estado`, { 
-      method: 'PATCH', 
-      body: { nuevoEstado } 
-    }),
-
-  obtenerEstadisticas: () => 
-    fetchAPI('/pedidos/estadisticas'),
-};
-
-export default fetchAPI;
+// Exportar la instancia
+export default apiInstance;

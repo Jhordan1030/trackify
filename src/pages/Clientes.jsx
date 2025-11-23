@@ -3,23 +3,14 @@ import React, { useState, useEffect } from "react";
 import EditarClienteModal from "../components/Clientes/EditarClienteModal";
 import { ClientesList } from "../components/Clientes/ClientesList";
 import { ClienteForm } from "../components/Clientes/ClienteForm";
-import { useClientes } from "../hooks/useClientes";
+import api from "../services/api";
 
 const Clientes = () => {
-  const { 
-    obtenerClientes, 
-    actualizarCliente, 
-    crearCliente, 
-    eliminarCliente,
-    loading, 
-    error,
-    clearError 
-  } = useClientes();
-  
   const [clientes, setClientes] = useState([]);
   const [clienteEditando, setClienteEditando] = useState(null);
   const [mostrarModal, setMostrarModal] = useState(false);
-  const [busquedaRealizada, setBusquedaRealizada] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Cargar clientes al iniciar
   useEffect(() => {
@@ -28,41 +19,61 @@ const Clientes = () => {
 
   const cargarClientes = async () => {
     try {
+      setLoading(true);
+      setError(null);
       console.log('📥 Cargando clientes...');
-      const datos = await obtenerClientes();
-      console.log('✅ Clientes cargados:', datos);
       
-      if (Array.isArray(datos)) {
-        setClientes(datos);
-      } else {
-        console.error('❌ Los datos no son un array:', datos);
-        setClientes([]);
-      }
+      const response = await api.clientes.listar();
+      const datos = response.data || [];
+      
+      console.log('✅ Clientes cargados:', datos);
+      setClientes(Array.isArray(datos) ? datos : []);
     } catch (err) {
       console.error('❌ Error cargando clientes:', err);
+      setError(err.message || 'Error al cargar clientes');
       setClientes([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleBuscarCliente = async (usuario, plataforma) => {
     try {
-      // Por ahora, simplemente recargamos todos los clientes
-      // En una implementación real, harías una búsqueda específica
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.clientes.buscar(usuario, plataforma);
+      console.log('✅ Cliente encontrado:', response.data);
+      
+      // Recargar todos los clientes para actualizar la lista
       await cargarClientes();
-      setBusquedaRealizada(true);
     } catch (err) {
       console.error('❌ Error buscando cliente:', err);
+      setError(err.message || 'Error al buscar cliente');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCrearCliente = async (datosCliente) => {
     try {
-      await crearCliente(datosCliente);
-      await cargarClientes(); // Recargar la lista
+      setLoading(true);
+      setError(null);
+      
+      console.log('📤 Creando cliente:', datosCliente);
+      const response = await api.clientes.crear(datosCliente);
+      
+      console.log('✅ Cliente creado:', response.data);
       alert('✅ Cliente creado correctamente');
+      
+      // Recargar la lista
+      await cargarClientes();
     } catch (err) {
       console.error('❌ Error creando cliente:', err);
+      setError(err.message || 'Error al crear cliente');
       alert('❌ Error al crear el cliente: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,27 +84,48 @@ const Clientes = () => {
 
   const handleActualizarCliente = async (id, datos) => {
     try {
+      setLoading(true);
+      setError(null);
+      
       console.log('🔄 Actualizando cliente:', id, datos);
-      await actualizarCliente(id, datos);
+      await api.clientes.actualizar(id, datos);
+      
+      console.log('✅ Cliente actualizado correctamente');
+      alert('✅ Cliente actualizado correctamente');
+      
+      // Recargar la lista
       await cargarClientes();
+      
       setMostrarModal(false);
       setClienteEditando(null);
-      alert('✅ Cliente actualizado correctamente');
     } catch (err) {
       console.error('❌ Error actualizando cliente:', err);
+      setError(err.message || 'Error al actualizar cliente');
       alert('❌ Error al actualizar el cliente: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleEliminarCliente = async (id) => {
     try {
-      // Por ahora, solo simulamos la eliminación
-      // En una implementación real, llamarías a eliminarCliente(id)
+      setLoading(true);
+      setError(null);
+      
       console.log('🗑️ Eliminando cliente:', id);
-      alert('Función de eliminar cliente pendiente de implementar');
+      await api.clientes.eliminar(id);
+      
+      console.log('✅ Cliente eliminado correctamente');
+      alert('✅ Cliente eliminado correctamente');
+      
+      // Recargar la lista
+      await cargarClientes();
     } catch (err) {
       console.error('❌ Error eliminando cliente:', err);
+      setError(err.message || 'Error al eliminar cliente');
       alert('❌ Error al eliminar el cliente: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,7 +148,7 @@ const Clientes = () => {
           <div className="flex justify-between items-center">
             <span>Error: {error}</span>
             <button 
-              onClick={clearError}
+              onClick={() => setError(null)}
               className="text-red-500 hover:text-red-700 font-bold"
             >
               ×
