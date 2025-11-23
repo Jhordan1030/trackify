@@ -7,9 +7,18 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const handleChange = (field, value) => {
+    console.log(`🔄 Cambiando campo ${field} a:`, value);
+    console.log(`📞 Llamando onChange para item ${index}, campo ${field}`);
+    
     onChange(index, field, value);
+    
+    // Debug: verificar el estado después de un momento
+    setTimeout(() => {
+      console.log(`⏱️ Estado después de cambiar ${field}:`, item);
+    }, 100);
   };
 
   // Función para formatear la variación
@@ -38,14 +47,13 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
 
   // Cargar productos al abrir el dropdown
   const loadProductos = async (search = '') => {
-    if (search.length < 2 && search !== '') return;
-    
     setIsSearching(true);
     try {
       const response = await api.inventario.listarSKUs({ 
         search: search,
         limit: 20 
       });
+      console.log('📦 Productos cargados:', response.data);
       setProductos(response.data || []);
     } catch (error) {
       console.error('Error cargando productos:', error);
@@ -58,55 +66,95 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
   // Cargar productos cuando se abre el dropdown
   useEffect(() => {
     if (showDropdown) {
-      loadProductos('');
+      loadProductos(searchTerm);
     }
-  }, [showDropdown]);
+  }, [showDropdown, searchTerm]);
 
-  // Buscar productos cuando cambia el término
+  // Cargar el producto seleccionado cuando cambia el skuId
   useEffect(() => {
-    if (showDropdown) {
-      const timeoutId = setTimeout(() => {
-        loadProductos(searchTerm);
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [searchTerm, showDropdown]);
+    const loadSelectedProduct = async () => {
+      if (item.skuId && item.skuId !== '') {
+        try {
+          console.log('🔄 Cargando producto seleccionado para skuId:', item.skuId);
+          const response = await api.inventario.obtenerSKU(item.skuId);
+          console.log('✅ Producto seleccionado cargado:', response.data);
+          setSelectedProduct(response.data);
+        } catch (error) {
+          console.error('Error cargando producto seleccionado:', error);
+          setSelectedProduct(null);
+        }
+      } else {
+        // Si no hay skuId, limpiar el producto seleccionado
+        setSelectedProduct(null);
+      }
+    };
+
+    loadSelectedProduct();
+  }, [item.skuId]);
 
   const selectProduct = (sku) => {
+    console.log('🎯 Seleccionando producto:', sku);
+    
     const precio = getPrecioSeguro(sku);
     
+    // Actualizar todos los campos
     handleChange('skuId', sku.id);
     handleChange('precioUnitario', precio);
     
+    // Asegurar que la cantidad sea al menos 1
     if (!item.cantidad || item.cantidad < 1) {
       handleChange('cantidad', 1);
     }
     
+    setSelectedProduct(sku);
     setShowDropdown(false);
     setSearchTerm('');
+    
+    console.log('✅ Campos actualizados:', {
+      skuId: sku.id,
+      precioUnitario: precio,
+      cantidad: item.cantidad || 1
+    });
   };
 
   const getSelectedProductDisplay = () => {
-    if (!item.skuId) return 'Seleccionar producto...';
+    if (!selectedProduct) return 'Seleccionar producto...';
     
-    const selected = productos.find(p => p.id === item.skuId);
-    if (!selected) return 'Cargando...';
-    
-    const variacionTexto = formatVariacion(selected.variacion);
+    const variacionTexto = formatVariacion(selectedProduct.variacion);
     return variacionTexto 
-      ? `${selected.producto_nombre} - ${variacionTexto}`
-      : selected.producto_nombre;
+      ? `${selectedProduct.producto_nombre} - ${variacionTexto}`
+      : selectedProduct.producto_nombre;
   };
 
   const clearSelection = () => {
+    console.log('🗑️ Limpiando selección');
     handleChange('skuId', '');
     handleChange('precioUnitario', '');
+    setSelectedProduct(null);
     setSearchTerm('');
+  };
+
+  const handleDropdownToggle = () => {
+    console.log('📂 Toggle dropdown:', !showDropdown);
+    setShowDropdown(!showDropdown);
+    if (!showDropdown) {
+      loadProductos('');
+    }
   };
 
   // Verificar si el item está completo
   const isItemComplete = item.skuId && item.cantidad > 0 && item.precioUnitario > 0;
-  const hasProduct = !!item.skuId;
+  const hasProduct = !!item.skuId && item.skuId !== '';
+
+  console.log('📊 Estado del item:', {
+    index,
+    skuId: item.skuId,
+    cantidad: item.cantidad,
+    precioUnitario: item.precioUnitario,
+    hasProduct,
+    isItemComplete,
+    selectedProduct: selectedProduct?.producto_nombre
+  });
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -141,10 +189,10 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
             {/* Botón que simula el select */}
             <button
               type="button"
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between"
+              onClick={handleDropdownToggle}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
             >
-              <span className={`truncate ${!item.skuId ? 'text-gray-500' : 'text-gray-900'}`}>
+              <span className={`truncate ${!selectedProduct ? 'text-gray-500' : 'text-gray-900'}`}>
                 {getSelectedProductDisplay()}
               </span>
               <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
@@ -152,9 +200,9 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
 
             {/* Dropdown */}
             {showDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
                 {/* Barra de búsqueda */}
-                <div className="p-2 border-b border-gray-200">
+                <div className="p-2 border-b border-gray-200 bg-white">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
@@ -164,6 +212,7 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Buscar productos..."
                       autoFocus
+                      onClick={(e) => e.stopPropagation()}
                     />
                   </div>
                 </div>
@@ -173,6 +222,7 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
                   {isSearching ? (
                     <div className="flex justify-center items-center py-4">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-sm text-gray-500">Buscando...</span>
                     </div>
                   ) : productos.length > 0 ? (
                     productos.map((sku) => {
@@ -185,8 +235,8 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
                           key={sku.id}
                           type="button"
                           onClick={() => selectProduct(sku)}
-                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
-                            isSelected ? 'bg-blue-50 border-blue-200' : ''
+                          className={`w-full px-4 py-3 text-left hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                            isSelected ? 'bg-blue-100 border-blue-200' : ''
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -196,13 +246,13 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
                               }`}>
                                 {sku.producto_nombre}
                                 {isSelected && (
-                                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    Seleccionado
+                                  <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                    ✓ Seleccionado
                                   </span>
                                 )}
                               </p>
                               <p className="text-xs text-gray-500 mt-1">
-                                SKU: {sku.sku_codigo} | Código: {sku.codigo_producto}
+                                SKU: {sku.sku_codigo}
                               </p>
                               <div className="flex items-center space-x-2 mt-1">
                                 <span className={`text-xs px-2 py-1 rounded ${
@@ -242,30 +292,35 @@ export const ItemForm = ({ item, index, onChange, onRemove, canRemove }) => {
             {/* Overlay para cerrar el dropdown */}
             {showDropdown && (
               <div 
-                className="fixed inset-0 z-0" 
+                className="fixed inset-0 z-40" 
                 onClick={() => setShowDropdown(false)}
               />
             )}
           </div>
 
           {/* Información del producto seleccionado */}
-          {hasProduct && (
+          {hasProduct && selectedProduct && (
             <div className="mt-2 p-3 bg-green-50 rounded border border-green-200">
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-green-900">
-                    Producto seleccionado
+                    ✅ Producto seleccionado
                   </p>
                   <div className="flex flex-wrap items-center gap-2 mt-1">
                     <span className="text-xs text-green-700">
-                      {getSelectedProductDisplay()}
+                      {selectedProduct.producto_nombre}
                     </span>
+                    {selectedProduct.variacion && (
+                      <span className="text-xs text-green-600">
+                        ({formatVariacion(selectedProduct.variacion)})
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={clearSelection}
-                  className="ml-2 text-xs text-red-600 hover:text-red-800 whitespace-nowrap"
+                  className="ml-2 text-xs text-red-600 hover:text-red-800 whitespace-nowrap border border-red-300 px-2 py-1 rounded hover:bg-red-50"
                 >
                   Cambiar
                 </button>

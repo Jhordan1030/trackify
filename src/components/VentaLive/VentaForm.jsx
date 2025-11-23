@@ -19,16 +19,31 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     }));
   };
 
+  // Función corregida para actualizar items
   const handleItemChange = (index, field, value) => {
-    const newItems = [...formData.items];
-    newItems[index] = {
-      ...newItems[index],
-      [field]: value,
-    };
-    setFormData(prev => ({
-      ...prev,
-      items: newItems,
-    }));
+    console.log(`📝 Actualizando item ${index}, campo ${field} a:`, value);
+    
+    setFormData(prev => {
+      // Crear una copia profunda de los items usando map
+      const newItems = prev.items.map((item, i) => {
+        if (i === index) {
+          const updatedItem = {
+            ...item,
+            [field]: value
+          };
+          console.log(`✅ Item ${index} actualizado:`, updatedItem);
+          return updatedItem;
+        }
+        return item;
+      });
+      
+      console.log(`📋 Todos los items actualizados:`, newItems);
+      
+      return {
+        ...prev,
+        items: newItems
+      };
+    });
   };
 
   const addItem = () => {
@@ -53,7 +68,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     
     // Validación mejorada
     const itemsValidos = formData.items.every(
-      item => item.skuId && item.cantidad && item.cantidad > 0 && item.precioUnitario && item.precioUnitario > 0
+      item => item.skuId && item.skuId !== '' && item.cantidad && item.cantidad > 0 && item.precioUnitario && item.precioUnitario > 0
     );
 
     if (!itemsValidos) {
@@ -95,7 +110,10 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
 
   // Verificar si el formulario puede enviarse
   const canSubmit = formData.usuario.trim() && 
-    formData.items.every(item => item.skuId && item.cantidad > 0 && item.precioUnitario > 0);
+    formData.items.every(item => item.skuId && item.skuId !== '' && item.cantidad > 0 && item.precioUnitario > 0);
+
+  // DEBUG: Mostrar el estado actual del formulario
+  console.log('📋 Estado completo del formulario:', formData);
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 space-y-6">
