@@ -85,6 +85,10 @@ class ApiService {
     obtener: (id) => {
       return this.get(`/clientes/${id}`);
     },
+
+    obtenerCompleto: (id) => {
+      return this.get(`/clientes/${id}/completo`);
+    },
     
     crear: (data) => {
       return this.post('/clientes', data);
@@ -97,6 +101,14 @@ class ApiService {
     eliminar: (id) => {
       return this.delete(`/clientes/${id}`);
     },
+
+    reactivar: (id) => {
+      return this.patch(`/clientes/${id}/reactivar`);
+    },
+
+    buscarPorUsuario: (usuario, plataforma) => {
+      return this.get(`/clientes/usuario/${encodeURIComponent(usuario)}/${encodeURIComponent(plataforma)}`);
+    }
   };
 
   // === PRODUCTOS ===
