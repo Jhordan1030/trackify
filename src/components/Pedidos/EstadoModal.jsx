@@ -27,6 +27,18 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
     onEstadoChange(estado);
   };
 
+  const getBadgeColorClass = (color) => {
+    const colorMap = {
+      'blue': 'bg-blue-100 text-blue-800 border-blue-200',
+      'green': 'bg-green-100 text-green-800 border-green-200',
+      'yellow': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+      'red': 'bg-red-100 text-red-800 border-red-200',
+      'gray': 'bg-gray-100 text-gray-800 border-gray-200',
+      'purple': 'bg-purple-100 text-purple-800 border-purple-200'
+    };
+    return colorMap[color] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-xl max-w-md w-full animate-fade-in-up">
@@ -36,9 +48,9 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
           </h3>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-400" />
+            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
 
@@ -46,7 +58,7 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
           <p className="text-sm text-gray-600 mb-4">
             Pedido: <strong>{pedido.numero_pedido}</strong>
             <br />
-            Estado actual: <span className={`badge badge-${ESTADOS_PEDIDO[pedido.estado]?.color}`}>
+            Estado actual: <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getBadgeColorClass(ESTADOS_PEDIDO[pedido.estado]?.color)}`}>
               {ESTADOS_PEDIDO[pedido.estado]?.label}
             </span>
           </p>
@@ -57,10 +69,12 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
                 <button
                   key={estado}
                   onClick={() => handleEstadoClick(estado)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    ESTADOS_PEDIDO[estado]?.color === 'danger'
-                      ? 'border-red-200 hover:bg-red-50 text-red-700'
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                  className={`w-full text-left p-3 rounded-lg border transition-all duration-200 ${
+                    ESTADOS_PEDIDO[estado]?.color === 'red' || estado === 'cancelado'
+                      ? 'border-red-200 hover:bg-red-50 text-red-700 hover:border-red-300'
+                      : ESTADOS_PEDIDO[estado]?.color === 'green'
+                      ? 'border-green-200 hover:bg-green-50 text-green-700 hover:border-green-300'
+                      : 'border-blue-200 hover:bg-blue-50 text-blue-700 hover:border-blue-300'
                   }`}
                 >
                   <div className="font-medium">
@@ -85,7 +99,7 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
         <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-200"
           >
             Cancelar
           </button>

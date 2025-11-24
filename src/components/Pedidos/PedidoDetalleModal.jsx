@@ -68,7 +68,7 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
           </button>
         </div>
 
@@ -132,7 +132,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-3">
-                    <User className="w-4 h-4 text-gray-400" />
+                    <div className="bg-gray-100 p-1.5 rounded-lg">
+                      <User className="w-4 h-4 text-gray-600" />
+                    </div>
                     <div>
                       <p className="font-medium text-gray-900">
                         {renderSafeText(pedido.cliente_usuario)}
@@ -145,7 +147,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
 
                   {pedido.cliente_nombre && (
                     <div className="flex items-center space-x-3">
-                      <User className="w-4 h-4 text-gray-400" />
+                      <div className="bg-gray-100 p-1.5 rounded-lg">
+                        <User className="w-4 h-4 text-gray-600" />
+                      </div>
                       <span className="text-sm text-gray-700">
                         {renderSafeText(pedido.cliente_nombre)}
                       </span>
@@ -154,7 +158,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
 
                   {pedido.cliente_telefono && (
                     <div className="flex items-center space-x-3">
-                      <Phone className="w-4 h-4 text-gray-400" />
+                      <div className="bg-gray-100 p-1.5 rounded-lg">
+                        <Phone className="w-4 h-4 text-gray-600" />
+                      </div>
                       <span className="text-sm text-gray-700">
                         {renderSafeText(pedido.cliente_telefono)}
                       </span>
@@ -164,7 +170,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                   {/* Dirección si está disponible */}
                   {(pedido.direccion_linea1 || pedido.ciudad) && (
                     <div className="flex items-start space-x-3">
-                      <MapPin className="w-4 h-4 text-gray-400 mt-0.5" />
+                      <div className="bg-gray-100 p-1.5 rounded-lg mt-0.5">
+                        <MapPin className="w-4 h-4 text-gray-600" />
+                      </div>
                       <div className="text-sm text-gray-700">
                         {pedido.direccion_linea1 && <p>{renderSafeText(pedido.direccion_linea1)}</p>}
                         {pedido.direccion_linea2 && <p>{renderSafeText(pedido.direccion_linea2)}</p>}
@@ -186,7 +194,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
             {pedido.numero_guia_envio && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <h4 className="font-semibold text-blue-900 mb-2 flex items-center space-x-2">
-                  <Truck className="w-4 h-4" />
+                  <div className="bg-blue-100 p-1.5 rounded-lg">
+                    <Truck className="w-4 h-4 text-blue-600" />
+                  </div>
                   <span>Información de Envío</span>
                 </h4>
                 <div className="space-y-1 text-sm text-blue-700">
@@ -208,7 +218,7 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                 {pedido.items && Array.isArray(pedido.items) && pedido.items.length > 0 ? (
                   <div className="space-y-3">
                     {pedido.items.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                      <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">
                             {renderSafeText(item.producto_nombre || `SKU: ${item.sku_codigo}`)}
@@ -231,7 +241,9 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                   </div>
                 ) : (
                   <div className="text-center py-4">
-                    <ShoppingCart className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2">
+                      <ShoppingCart className="w-6 h-6 text-gray-400" />
+                    </div>
                     <p className="text-gray-500">No hay información detallada de productos</p>
                   </div>
                 )}
@@ -244,8 +256,10 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Historial de Estados</h3>
                 <div className="space-y-2">
                   {pedido.historial_estados.map((historial, index) => (
-                    <div key={index} className="flex items-center space-x-3 p-3 bg-white border rounded-lg">
-                      <Clock className="w-4 h-4 text-gray-400" />
+                    <div key={index} className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
+                      <div className="bg-gray-100 p-1.5 rounded-lg">
+                        <Clock className="w-4 h-4 text-gray-600" />
+                      </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-900">
                           {renderSafeText(historial.estado_anterior)} → {renderSafeText(historial.estado_nuevo)}
@@ -266,7 +280,7 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
         <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
           >
             Cerrar
           </button>
@@ -276,7 +290,7 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
                 onClose();
                 // Aquí podrías abrir el modal de cambio de estado si lo deseas
               }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
             >
               Cambiar Estado
             </button>

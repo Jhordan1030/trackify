@@ -9,7 +9,9 @@ import {
     Truck,
     CheckCircle,
     XCircle,
-    Eye
+    Eye,
+    Clock,
+    AlertCircle
 } from 'lucide-react';
 import { formatCurrency, formatDate, getEstadoConfig } from '../../utils/helpers';
 import { EstadoModal } from './EstadoModal';
@@ -26,8 +28,8 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
         'enviado': Truck,
         'entregado': CheckCircle,
         'cancelado': XCircle,
-        'pendiente_contacto': User,
-        'pendiente_pago': User,
+        'pendiente_contacto': Clock,
+        'pendiente_pago': Clock,
         'pago_confirmado': Package,
         'empaquetado': Package
     };
@@ -94,7 +96,7 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
     return (
         <>
             <div 
-                className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4 border border-gray-200 cursor-pointer"
+                className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 p-4 border border-gray-200 cursor-pointer"
                 onClick={() => setShowDetalleModal(true)}
             >
                 <div className="flex items-start justify-between mb-4">
@@ -105,7 +107,9 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                         <div>
                             <h3 className="font-semibold text-gray-900">{pedido.numero_pedido}</h3>
                             <div className="flex items-center space-x-2 mt-1">
-                                <User className="w-4 h-4 text-gray-400" />
+                                <div className="bg-gray-100 p-1 rounded">
+                                    <User className="w-3 h-3 text-gray-600" />
+                                </div>
                                 <span className="text-sm text-gray-600">
                                     {pedido.cliente_usuario} ({pedido.plataforma})
                                 </span>
@@ -119,9 +123,9 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                                 e.stopPropagation();
                                 setShowMenu(!showMenu);
                             }}
-                            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                         >
-                            <MoreVertical className="w-4 h-4 text-gray-400" />
+                            <MoreVertical className="w-4 h-4 text-gray-500" />
                         </button>
 
                         {showMenu && (
@@ -132,9 +136,9 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                                         setShowDetalleModal(true);
                                         setShowMenu(false);
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2 transition-colors"
                                 >
-                                    <Eye className="w-4 h-4" />
+                                    <Eye className="w-4 h-4 text-gray-500" />
                                     <span>Ver Detalles</span>
                                 </button>
                                 <button
@@ -143,7 +147,7 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                                         setShowModal(true);
                                         setShowMenu(false);
                                     }}
-                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                                 >
                                     Cambiar Estado
                                 </button>
@@ -153,7 +157,7 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                                             e.stopPropagation();
                                             handleNextEstado();
                                         }}
-                                        className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50"
+                                        className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 transition-colors"
                                     >
                                         Avanzar a {nextEstado.replace('_', ' ')}
                                     </button>
@@ -165,12 +169,16 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
 
                 <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
                     <div className="flex items-center space-x-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{formatDate(pedido.fecha_creacion)}</span>
+                        <div className="bg-gray-100 p-1 rounded">
+                            <Calendar className="w-3 h-3 text-gray-600" />
+                        </div>
+                        <span className="text-gray-700">{formatDate(pedido.fecha_creacion)}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <Package className="w-4 h-4 text-gray-400" />
-                        <span>{pedido.total_items} items • {pedido.total_unidades} unidades</span>
+                        <div className="bg-gray-100 p-1 rounded">
+                            <Package className="w-3 h-3 text-gray-600" />
+                        </div>
+                        <span className="text-gray-700">{pedido.total_items} items • {pedido.total_unidades} unidades</span>
                     </div>
                 </div>
 
@@ -181,7 +189,9 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                         </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                        <DollarSign className="w-4 h-4 text-gray-400" />
+                        <div className="bg-gray-100 p-1 rounded">
+                            <DollarSign className="w-3 h-3 text-gray-600" />
+                        </div>
                         <span className="font-semibold text-gray-900">
                             {formatCurrency(pedido.total)}
                         </span>
@@ -189,11 +199,16 @@ export const PedidoCard = ({ pedido, onActualizarEstado }) => {
                 </div>
 
                 {pedido.numero_guia_envio && (
-                    <div className="mt-3 p-2 bg-blue-50 rounded-lg">
-                        <p className="text-sm text-blue-700">
-                            <strong>Guía:</strong> {pedido.numero_guia_envio}
-                            {pedido.empresa_envio && ` • ${pedido.empresa_envio}`}
-                        </p>
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                            <div className="bg-blue-100 p-1 rounded">
+                                <Truck className="w-3 h-3 text-blue-600" />
+                            </div>
+                            <p className="text-sm text-blue-700">
+                                <strong>Guía:</strong> {pedido.numero_guia_envio}
+                                {pedido.empresa_envio && ` • ${pedido.empresa_envio}`}
+                            </p>
+                        </div>
                     </div>
                 )}
             </div>
