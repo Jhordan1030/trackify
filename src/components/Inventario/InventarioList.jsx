@@ -1,5 +1,5 @@
-// src/components/Inventario/InventarioList.jsx - MEJORADO RESPONSIVO
-import { Package, AlertTriangle, TrendingUp, Archive, Plus, Edit } from 'lucide-react';
+// src/components/Inventario/InventarioList.jsx - MEJORADO CON IMPORTAR
+import { Package, AlertTriangle, TrendingUp, Archive, Plus, Edit, Upload } from 'lucide-react';
 
 // Función helper para formatear moneda
 export const formatCurrency = (amount) => {
@@ -16,7 +16,8 @@ export const InventarioList = ({
   loading, 
   onAjustarStock, 
   onCrearProducto,
-  onEditarProducto
+  onEditarProducto,
+  onImportarExcel
 }) => {
   if (loading) {
     return (
@@ -41,13 +42,22 @@ export const InventarioList = ({
           <p className="text-gray-500 text-sm sm:text-base mb-6 max-w-md mx-auto">
             Comienza agregando tu primer producto al inventario para llevar un control de stock.
           </p>
-          <button
-            onClick={onCrearProducto}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 mx-auto text-sm sm:text-base font-medium"
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>Crear Primer Producto</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={onCrearProducto}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 text-sm sm:text-base font-medium"
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Crear Primer Producto</span>
+            </button>
+            <button
+              onClick={onImportarExcel}
+              className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center space-x-2 text-sm sm:text-base font-medium"
+            >
+              <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Importar desde Excel</span>
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -65,13 +75,22 @@ export const InventarioList = ({
             Gestiona y controla tu stock de productos
           </p>
         </div>
-        <button
-          onClick={onCrearProducto}
-          className="px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2 w-full xs:w-auto text-sm sm:text-base font-medium shadow-sm"
-        >
-          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span>Nuevo Producto</span>
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full xs:w-auto">
+          <button
+            onClick={onImportarExcel}
+            className="px-4 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2 text-sm sm:text-base font-medium shadow-sm order-2 sm:order-1"
+          >
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Importar Excel</span>
+          </button>
+          <button
+            onClick={onCrearProducto}
+            className="px-4 py-2.5 sm:px-5 sm:py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 flex items-center justify-center space-x-2 w-full xs:w-auto text-sm sm:text-base font-medium shadow-sm order-1 sm:order-2"
+          >
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span>Nuevo Producto</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid Responsivo Mejorado */}
@@ -132,7 +151,13 @@ export const InventarioList = ({
                 {item.variacion && Object.keys(item.variacion).length > 0 && (
                   <div className="flex items-start space-x-2">
                     <span className="font-medium text-gray-700 min-w-[70px] mt-0.5">Variación:</span>
-                    <span className="truncate text-xs">{Object.values(item.variacion).join(', ')}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(item.variacion).map(([tipo, valores]) => (
+                        <span key={tipo} className="inline-block bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs border border-blue-200">
+                          {tipo}: {Array.isArray(valores) ? valores.join(', ') : valores}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

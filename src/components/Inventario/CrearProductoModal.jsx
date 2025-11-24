@@ -1,6 +1,6 @@
-// src/components/Inventario/CrearProductoModal.jsx - CON VARIACIONES
+// src/components/Inventario/CrearProductoModal.jsx - CON VARIACIONES MEJORADO
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Minus, ChevronDown } from 'lucide-react';
+import { X, Plus, Minus, ChevronDown, Upload } from 'lucide-react';
 
 const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
   const [formData, setFormData] = useState({
@@ -20,21 +20,21 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
   const [variaciones, setVariaciones] = useState([]);
   const [mostrarVariaciones, setMostrarVariaciones] = useState(false);
 
-  // Lista de categorías predefinidas con IDs exactos
+  // Lista de categorías predefinidas con IDs exactos y configuración de variaciones
   const categorias = [
-    { id: 1, nombre: 'Ropa', necesitaVariaciones: true },
-    { id: 2, nombre: 'Calzado', necesitaVariaciones: true },
-    { id: 3, nombre: 'Accesorios', necesitaVariaciones: true },
+    { id: 1, nombre: 'Ropa', necesitaVariaciones: true, tiposVariacion: ['Talla', 'Color'] },
+    { id: 2, nombre: 'Calzado', necesitaVariaciones: true, tiposVariacion: ['Talla'] },
+    { id: 3, nombre: 'Accesorios', necesitaVariaciones: true, tiposVariacion: ['Color', 'Material'] },
     { id: 4, nombre: 'Electrónicos', necesitaVariaciones: false },
     { id: 5, nombre: 'Hogar', necesitaVariaciones: false },
     { id: 6, nombre: 'Belleza', necesitaVariaciones: false },
-    { id: 7, nombre: 'Deportes', necesitaVariaciones: true },
+    { id: 7, nombre: 'Deportes', necesitaVariaciones: true, tiposVariacion: ['Talla', 'Color'] },
     { id: 8, nombre: 'Juguetes', necesitaVariaciones: false },
     { id: 9, nombre: 'Libros', necesitaVariaciones: false },
     { id: 10, nombre: 'Otros', necesitaVariaciones: false }
   ];
 
-  // Mapeo de categorías a IDs - VERIFICADO
+  // Mapeo de categorías a IDs
   const categoriasMap = {
     'Ropa': 1,
     'Calzado': 2,
@@ -46,6 +46,15 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
     'Juguetes': 8,
     'Libros': 9,
     'Otros': 10
+  };
+
+  // Valores predefinidos para variaciones comunes
+  const valoresPredefinidos = {
+    'Talla': ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+    'Talla Calzado': ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+    'Color': ['Negro', 'Blanco', 'Rojo', 'Azul', 'Verde', 'Amarillo', 'Rosa', 'Morado', 'Gris', 'Beige', 'Marrón'],
+    'Material': ['Algodón', 'Poliéster', 'Lino', 'Seda', 'Cuero', 'Jean', 'Lana', 'Sintético'],
+    'Modelo': ['Básico', 'Premium', 'Deportivo', 'Elegante', 'Casual', 'Formal']
   };
 
   // Resetear formulario cuando se abre el modal
@@ -75,15 +84,42 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
       const categoriaSeleccionada = categorias.find(cat => cat.nombre === formData.categoria);
       setMostrarVariaciones(categoriaSeleccionada?.necesitaVariaciones || false);
       
-      // Si la categoría necesita variaciones, agregar una por defecto
+      // Si la categoría necesita variaciones, agregar variaciones por defecto
       if (categoriaSeleccionada?.necesitaVariaciones && variaciones.length === 0) {
+        const variacionesIniciales = [];
+        
         if (formData.categoria === 'Ropa' || formData.categoria === 'Deportes') {
-          setVariaciones([{ tipo: 'Talla', valores: ['S', 'M', 'L', 'XL'] }]);
+          variacionesIniciales.push(
+            { 
+              tipo: 'Talla', 
+              valores: ['S', 'M', 'L', 'XL'],
+              valoresPredefinidos: valoresPredefinidos['Talla']
+            },
+            { 
+              tipo: 'Color', 
+              valores: ['Negro', 'Blanco'],
+              valoresPredefinidos: valoresPredefinidos['Color']
+            }
+          );
         } else if (formData.categoria === 'Calzado') {
-          setVariaciones([{ tipo: 'Talla', valores: ['35', '36', '37', '38', '39', '40', '41', '42'] }]);
+          variacionesIniciales.push(
+            { 
+              tipo: 'Talla', 
+              valores: ['38', '39', '40', '41', '42'],
+              valoresPredefinidos: valoresPredefinidos['Talla Calzado']
+            }
+          );
         } else if (formData.categoria === 'Accesorios') {
-          setVariaciones([{ tipo: 'Color', valores: ['Negro', 'Blanco', 'Rojo', 'Azul'] }]);
+          variacionesIniciales.push(
+            { 
+              tipo: 'Color', 
+              valores: ['Negro', 'Blanco', 'Rojo'],
+              valoresPredefinidos: valoresPredefinidos['Color']
+            }
+          );
         }
+        
+        setVariaciones(variacionesIniciales);
       }
     }
   }, [formData.categoria]);
@@ -125,7 +161,7 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
 
   // Manejo de variaciones
   const agregarVariacion = () => {
-    setVariaciones(prev => [...prev, { tipo: '', valores: [] }]);
+    setVariaciones(prev => [...prev, { tipo: '', valores: [], valoresPredefinidos: [] }]);
   };
 
   const eliminarVariacion = (index) => {
@@ -137,6 +173,12 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
     
     if (field === 'tipo') {
       updatedVariaciones[index].tipo = value;
+      // Cargar valores predefinidos cuando se selecciona un tipo
+      if (value && valoresPredefinidos[value]) {
+        updatedVariaciones[index].valoresPredefinidos = valoresPredefinidos[value];
+      } else {
+        updatedVariaciones[index].valoresPredefinidos = [];
+      }
     } else if (field === 'valores') {
       // Convertir string separado por comas a array
       updatedVariaciones[index].valores = value.split(',').map(v => v.trim()).filter(v => v);
@@ -145,13 +187,11 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
     setVariaciones(updatedVariaciones);
   };
 
-  const agregarValorVariacion = (index, valor) => {
-    if (valor.trim()) {
+  const agregarValorPredefinido = (variacionIndex, valor) => {
+    if (valor.trim() && !variaciones[variacionIndex].valores.includes(valor.trim())) {
       const updatedVariaciones = [...variaciones];
-      if (!updatedVariaciones[index].valores.includes(valor.trim())) {
-        updatedVariaciones[index].valores = [...updatedVariaciones[index].valores, valor.trim()];
-        setVariaciones(updatedVariaciones);
-      }
+      updatedVariaciones[variacionIndex].valores = [...updatedVariaciones[variacionIndex].valores, valor.trim()];
+      setVariaciones(updatedVariaciones);
     }
   };
 
@@ -159,6 +199,14 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
     const updatedVariaciones = [...variaciones];
     updatedVariaciones[variacionIndex].valores = updatedVariaciones[variacionIndex].valores.filter((_, i) => i !== valorIndex);
     setVariaciones(updatedVariaciones);
+  };
+
+  const agregarValorPersonalizado = (variacionIndex, valor) => {
+    if (valor.trim() && !variaciones[variacionIndex].valores.includes(valor.trim())) {
+      const updatedVariaciones = [...variaciones];
+      updatedVariaciones[variacionIndex].valores = [...updatedVariaciones[variacionIndex].valores, valor.trim()];
+      setVariaciones(updatedVariaciones);
+    }
   };
 
   const validarFormulario = () => {
@@ -222,15 +270,16 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
       precioVenta: parseFloat(formData.precio_venta),
       stockInicial: parseInt(formData.stock_inicial) || 0,
       stockMinimo: parseInt(formData.stock_minimo) || 5,
-      // Incluir variaciones si existen
-      ...(variaciones.length > 0 && {
-        tipoInventario: 'con_variaciones',
-        variacion: variaciones.reduce((acc, variacion) => {
-          acc[variacion.tipo.toLowerCase()] = variacion.valores;
-          return acc;
-        }, {})
-      })
     };
+
+    // Incluir variaciones si existen
+    if (variaciones.length > 0) {
+      productoData.tipoInventario = 'con_variaciones';
+      productoData.variacion = variaciones.reduce((acc, variacion) => {
+        acc[variacion.tipo.toLowerCase()] = variacion.valores;
+        return acc;
+      }, {});
+    }
 
     console.log('🔍 VALIDACIÓN FINAL - Datos a enviar:', {
       ...productoData,
@@ -252,7 +301,7 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Crear Nuevo Producto</h2>
@@ -266,7 +315,7 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-6">
             {/* Mensajes de Error */}
             {errorDetallado && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -529,6 +578,9 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
                             required
                           >
                             <option value="">Seleccionar tipo</option>
+                            {categoriaSeleccionada?.tiposVariacion?.map(tipo => (
+                              <option key={tipo} value={tipo}>{tipo}</option>
+                            ))}
                             <option value="Talla">Talla</option>
                             <option value="Color">Color</option>
                             <option value="Material">Material</option>
@@ -555,17 +607,74 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
                         </div>
                       </div>
 
+                      {/* Valores Predefinidos */}
+                      {variacion.valoresPredefinidos.length > 0 && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Valores predefinidos:
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            {variacion.valoresPredefinidos.map((valor, valorIndex) => (
+                              <button
+                                key={valorIndex}
+                                type="button"
+                                onClick={() => agregarValorPredefinido(index, valor)}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                  variacion.valores.includes(valor)
+                                    ? 'bg-green-100 text-green-800 border border-green-200'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                                }`}
+                              >
+                                {valor} {variacion.valores.includes(valor) && '✓'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Agregar valor personalizado */}
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Agregar valor personalizado:
+                        </label>
+                        <div className="flex space-x-2">
+                          <input
+                            type="text"
+                            placeholder="Nuevo valor..."
+                            className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm"
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                agregarValorPersonalizado(index, e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              const input = e.target.previousElementSibling;
+                              agregarValorPersonalizado(index, input.value);
+                              input.value = '';
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                          >
+                            Agregar
+                          </button>
+                        </div>
+                      </div>
+
                       {/* Mostrar valores actuales */}
                       {variacion.valores.length > 0 && (
                         <div className="mt-3">
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Valores definidos:
+                            Valores definidos ({variacion.valores.length}):
                           </label>
                           <div className="flex flex-wrap gap-2">
                             {variacion.valores.map((valor, valorIndex) => (
                               <span
                                 key={valorIndex}
-                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
                               >
                                 {valor}
                                 <button
@@ -606,7 +715,7 @@ const CrearProductoModal = ({ isOpen, onClose, onCrearProducto, loading }) => {
                     El sistema generará automáticamente códigos SKU únicos para cada combinación de variaciones.
                     {mostrarVariaciones && variaciones.length > 0 && (
                       <span className="block mt-1 font-medium">
-                        Se crearán SKUs para: {variaciones.map(v => v.tipo).join(' + ')}
+                        Se crearán SKUs para: {variaciones.map(v => `${v.tipo} (${v.valores.length} opciones)`).join(' + ')}
                       </span>
                     )}
                   </p>
