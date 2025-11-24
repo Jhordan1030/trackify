@@ -1,3 +1,4 @@
+// src/components/Pedidos/EstadoModal.jsx
 import { X } from 'lucide-react';
 import { ESTADOS_PEDIDO } from '../../utils/constants';
 
@@ -16,6 +17,15 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
   };
 
   const estadosDisponibles = estadosPosibles[pedido.estado] || [];
+
+  const handleEstadoClick = (estado) => {
+    console.log('🎯 Cambiando estado a:', estado);
+    console.log('📋 Pedido ID:', pedido.id);
+    console.log('📊 Estado actual:', pedido.estado);
+    console.log('🔄 Nuevo estado:', estado);
+    
+    onEstadoChange(estado);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -46,10 +56,10 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
               estadosDisponibles.map((estado) => (
                 <button
                   key={estado}
-                  onClick={() => onEstadoChange(estado)}
+                  onClick={() => handleEstadoClick(estado)}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
                     ESTADOS_PEDIDO[estado]?.color === 'danger'
-                      ? 'border-danger-200 hover:bg-danger-50 text-danger-700'
+                      ? 'border-red-200 hover:bg-red-50 text-red-700'
                       : 'border-gray-200 hover:bg-gray-50 text-gray-700'
                   }`}
                 >
@@ -75,7 +85,7 @@ export const EstadoModal = ({ isOpen, onClose, pedido, onEstadoChange }) => {
         <div className="flex justify-end space-x-3 p-6 border-t border-gray-200">
           <button
             onClick={onClose}
-            className="btn btn-outline"
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
           >
             Cancelar
           </button>

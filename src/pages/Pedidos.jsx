@@ -21,8 +21,22 @@ const Pedidos = () => {
             const response = await api.pedidos.listar();
             const datos = response.data || [];
             
-            console.log('✅ Pedidos cargados:', datos);
-            setPedidos(Array.isArray(datos) ? datos : []);
+            console.log('✅ Pedidos cargados:', datos.length);
+            
+            // Cargar datos completos para cada pedido
+            const pedidosCompletos = await Promise.all(
+                datos.map(async (pedido) => {
+                    try {
+                        const pedidoCompleto = await api.pedidos.obtener(pedido.id);
+                        return pedidoCompleto.data || pedido;
+                    } catch (err) {
+                        console.warn(`⚠️ No se pudo cargar detalle del pedido ${pedido.id}:`, err.message);
+                        return pedido; // Retornar datos básicos si falla
+                    }
+                })
+            );
+            
+            setPedidos(pedidosCompletos);
         } catch (err) {
             console.error('❌ Error cargando pedidos:', err);
             setError(err.message || 'Error al cargar pedidos');

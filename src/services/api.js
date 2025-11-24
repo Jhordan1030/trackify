@@ -18,6 +18,10 @@ class ApiService {
 
     try {
       console.log(`🔄 ${config.method || 'GET'} ${url}`);
+      if (config.body) {
+        console.log('📦 Body enviado:', JSON.parse(config.body));
+      }
+      
       const response = await fetch(url, config);
       
       if (!response.ok) {
@@ -167,8 +171,10 @@ class ApiService {
     },
     
     actualizarEstado: (id, estado, data = {}) => {
+      console.log('🎯 API: Actualizando estado del pedido', { id, estado });
+      // CAMBIO CRÍTICO: Enviar 'nuevoEstado' en lugar de 'estado'
       return this.patch(`/pedidos/${id}/estado`, {
-        estado,
+        nuevoEstado: estado,  // ← ESTE ES EL CAMBIO CLAVE
         ...data
       });
     },

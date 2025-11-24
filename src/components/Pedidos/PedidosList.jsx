@@ -1,3 +1,4 @@
+// src/components/Pedidos/PedidosList.jsx
 import { ShoppingCart, Filter } from 'lucide-react';
 import { PedidoCard } from './PedidoCard';
 import { useState } from 'react';
@@ -8,9 +9,10 @@ export const PedidosList = ({ pedidos, loading, onActualizarEstado }) => {
 
     if (loading) {
         return (
-            <div className="card">
-                <div className="flex justify-center py-8">
-                    <div className="spinner w-8 h-8 border-2 border-primary-200 border-t-primary-600" />
+            <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex justify-center items-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-600">Cargando pedidos...</span>
                 </div>
             </div>
         );
@@ -18,7 +20,7 @@ export const PedidosList = ({ pedidos, loading, onActualizarEstado }) => {
 
     if (!pedidos || pedidos.length === 0) {
         return (
-            <div className="card">
+            <div className="bg-white rounded-lg shadow p-6">
                 <div className="text-center py-8">
                     <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No hay pedidos</h3>
@@ -37,6 +39,7 @@ export const PedidosList = ({ pedidos, loading, onActualizarEstado }) => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <h3 className="text-lg font-semibold text-gray-900">
                     Pedidos ({pedidosFiltrados.length})
+                    {pedidosFiltrados.length !== pedidos.length && ` de ${pedidos.length}`}
                 </h3>
 
                 <div className="flex items-center space-x-4">
@@ -44,7 +47,7 @@ export const PedidosList = ({ pedidos, loading, onActualizarEstado }) => {
                     <select
                         value={filtroEstado}
                         onChange={(e) => setFiltroEstado(e.target.value)}
-                        className="input w-auto"
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                         <option value="todos">Todos los estados</option>
                         {Object.entries(ESTADOS_PEDIDO).map(([key, config]) => (
