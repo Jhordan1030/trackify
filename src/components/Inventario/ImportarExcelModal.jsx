@@ -1,4 +1,4 @@
-// src/components/Inventario/ImportarExcelModal.jsx
+// src/components/Inventario/ImportarExcelModal.jsx - VERSIÓN COMPLETA CORREGIDA
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle, Download, Loader } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -9,6 +9,7 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
   const [errores, setErrores] = useState([]);
   const [pasoActual, setPasoActual] = useState(1);
   const [procesando, setProcesando] = useState(false);
+  const [resultadoImportacion, setResultadoImportacion] = useState(null);
   const fileInputRef = useRef(null);
 
   const categoriasDisponibles = [
@@ -29,8 +30,6 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
     'Otros': 10
   };
 
-  const categoriasConVariaciones = ['Ropa', 'Calzado', 'Accesorios', 'Deportes'];
-
   if (!isOpen) return null;
 
   const resetModal = () => {
@@ -39,6 +38,7 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
     setErrores([]);
     setPasoActual(1);
     setProcesando(false);
+    setResultadoImportacion(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -53,8 +53,6 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
     const file = event.target.files[0];
     if (!file) return;
 
-    console.log('📁 Archivo seleccionado:', file.name);
-    
     if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
       setErrores(['Por favor, sube un archivo Excel válido (.xlsx o .xls)']);
       return;
@@ -66,7 +64,6 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
     try {
       await procesarArchivoExcel(file);
     } catch (error) {
-      console.error('❌ Error procesando archivo:', error);
       setErrores(['Error al procesar el archivo: ' + error.message]);
     } finally {
       setProcesando(false);
@@ -74,29 +71,22 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
   };
 
   const procesarVariaciones = (dato) => {
-    console.log('🔄 Procesando variaciones para:', dato.nombre);
-    
     const variacion = {};
     
-    // Procesar tallas
     if (dato.tallas && dato.tallas.toString().trim()) {
       const tallasArray = dato.tallas.toString().split(',').map(t => t.trim()).filter(t => t);
-      console.log('📏 Tallas procesadas:', tallasArray);
       if (tallasArray.length > 0) {
         variacion.talla = tallasArray;
       }
     }
     
-    // Procesar colores
     if (dato.colores && dato.colores.toString().trim()) {
       const coloresArray = dato.colores.toString().split(',').map(c => c.trim()).filter(c => c);
-      console.log('🎨 Colores procesados:', coloresArray);
       if (coloresArray.length > 0) {
         variacion.color = coloresArray;
       }
     }
     
-    // Procesar materiales
     if (dato.materiales && dato.materiales.toString().trim()) {
       const materialesArray = dato.materiales.toString().split(',').map(m => m.trim()).filter(m => m);
       if (materialesArray.length > 0) {
@@ -104,7 +94,6 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
       }
     }
     
-    console.log('✅ Variación final:', variacion);
     return Object.keys(variacion).length > 0 ? variacion : {};
   };
 
@@ -114,15 +103,12 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
       
       reader.onload = (e) => {
         try {
-          console.log('📊 Iniciando procesamiento de Excel...');
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
           
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          
-          console.log('📋 Datos crudos del Excel:', jsonData);
           
           if (jsonData.length < 2) {
             setErrores(['El archivo está vacío o no tiene datos válidos']);
@@ -133,13 +119,7 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
           const encabezados = jsonData[0].map(h => h?.toString().toLowerCase().trim() || '');
           const filasDatos = jsonData.slice(1).filter(fila => fila.some(cell => cell !== null && cell !== ''));
           
-          console.log('📝 Encabezados encontrados:', encabezados);
-          console.log('📄 Filas de datos (filtradas):', filasDatos.length);
-          
           const { datosValidos, erroresValidacion } = validarYProcesarDatos(encabezados, filasDatos);
-          
-          console.log('✅ Datos válidos procesados:', datosValidos);
-          console.log('❌ Errores encontrados:', erroresValidacion);
           
           setDatosProcesados(datosValidos);
           setErrores(erroresValidacion);
@@ -147,14 +127,12 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
           resolve();
           
         } catch (error) {
-          console.error('❌ Error procesando archivo:', error);
           reject(error);
         }
       };
       
       reader.onerror = () => {
-        const error = new Error('Error al leer el archivo');
-        reject(error);
+        reject(new Error('Error al leer el archivo'));
       };
       
       reader.readAsArrayBuffer(file);
@@ -164,8 +142,8 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
   const validarYProcesarDatos = (encabezados, filasDatos) => {
     const datosValidos = [];
     const erroresValidacion = [];
+    const codigosVistos = new Set();
     
-    // Verificar encabezados mínimos requeridos
     const encabezadosRequeridos = ['codigo_producto', 'nombre', 'categoria', 'precio_venta'];
     const encabezadosFaltantes = encabezadosRequeridos.filter(req => 
       !encabezados.includes(req)
@@ -178,22 +156,26 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
       return { datosValidos, erroresValidacion };
     }
 
-    // Procesar cada fila
     filasDatos.forEach((fila, index) => {
       const numeroFila = index + 2;
       const erroresFila = [];
       
-      // Crear objeto con los datos mapeados
       const dato = {};
       encabezados.forEach((encabezado, colIndex) => {
         dato[encabezado] = fila[colIndex];
       });
 
-      console.log(`📖 Procesando fila ${numeroFila}:`, dato);
-
       // Validaciones básicas
       if (!dato.codigo_producto?.toString().trim()) {
         erroresFila.push('Código de producto es requerido');
+      } else {
+        const codigo = dato.codigo_producto.toString().trim();
+        // Verificar duplicados dentro del mismo archivo
+        if (codigosVistos.has(codigo)) {
+          erroresFila.push(`Código "${codigo}" está duplicado en el archivo`);
+        } else {
+          codigosVistos.add(codigo);
+        }
       }
 
       if (!dato.nombre?.toString().trim()) {
@@ -222,7 +204,6 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
       }
 
       if (erroresFila.length === 0) {
-        // Datos válidos - formatear para la API
         const categoria = dato.categoria.toString().trim();
         const categoriaId = categoriasMap[categoria];
         const variacion = procesarVariaciones(dato);
@@ -237,15 +218,12 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
           stockMinimo: stockMinimo,
         };
 
-        // Solo agregar variacion si hay variaciones
         if (Object.keys(variacion).length > 0) {
           productoData.variacion = variacion;
         }
 
-        console.log(`✅ Fila ${numeroFila} procesada correctamente:`, productoData);
         datosValidos.push(productoData);
       } else {
-        console.log(`❌ Errores en fila ${numeroFila}:`, erroresFila);
         erroresValidacion.push(`Fila ${numeroFila}: ${erroresFila.join('; ')}`);
       }
     });
@@ -259,13 +237,11 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
       return;
     }
 
-    console.log('🚀 Iniciando importación de productos:', datosProcesados);
-    
     try {
-      await onImportarProductos(datosProcesados);
+      const resultado = await onImportarProductos(datosProcesados);
+      setResultadoImportacion(resultado);
       setPasoActual(3);
     } catch (error) {
-      console.error('❌ Error en importación:', error);
       setErrores([...errores, `Error en la importación: ${error.message}`]);
     }
   };
@@ -485,22 +461,74 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
     </div>
   );
 
-  const renderPasoResultado = () => (
-    <div className="text-center space-y-4">
-      <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-        <CheckCircle className="w-8 h-8 text-green-600" />
+  const renderPasoResultado = () => {
+    const exitosos = resultadoImportacion?.exitosos || 0;
+    const errores = resultadoImportacion?.errores || 0;
+    const erroresDetalles = resultadoImportacion?.detalles?.errores || [];
+
+    return (
+      <div className="space-y-4">
+        <div className="text-center">
+          {errores === 0 ? (
+            <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
+            </div>
+          ) : (
+            <div className="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-yellow-600" />
+            </div>
+          )}
+          
+          <h3 className="text-lg font-semibold text-gray-900">
+            {errores === 0 ? '¡Importación Completada!' : 'Importación con Errores'}
+          </h3>
+          
+          <p className="text-gray-600 mt-2">
+            {errores === 0 ? (
+              <span>Se importaron <span className="font-bold text-green-600">{exitosos}</span> productos correctamente.</span>
+            ) : (
+              <span>
+                Se importaron <span className="font-bold text-green-600">{exitosos}</span> productos correctamente, 
+                pero hubo <span className="font-bold text-yellow-600">{errores}</span> errores.
+              </span>
+            )}
+          </p>
+        </div>
+
+        {errores > 0 && (
+          <div>
+            <h4 className="font-medium text-yellow-700 text-sm mb-2 flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4" />
+              <span>Errores durante la importación ({errores})</span>
+            </h4>
+            <div className="max-h-60 overflow-y-auto border border-yellow-200 rounded-lg bg-yellow-50 p-3">
+              <ul className="text-xs text-yellow-700 space-y-2">
+                {erroresDetalles.slice(0, 10).map((error, index) => (
+                  <li key={index} className="flex flex-col space-y-1">
+                    <div className="font-medium">
+                      {error.producto} - {error.nombre}
+                    </div>
+                    <div className="text-yellow-600 pl-2">
+                      {error.error}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {erroresDetalles.length > 10 && (
+                <p className="text-yellow-600 text-xs mt-2">
+                  + {erroresDetalles.length - 10} errores más...
+                </p>
+              )}
+            </div>
+            <p className="text-yellow-600 text-xs mt-2">
+              <strong>Nota:</strong> Los productos con códigos duplicados no se importaron. 
+              Puedes editar los códigos en el Excel e intentar nuevamente.
+            </p>
+          </div>
+        )}
       </div>
-      <h3 className="text-lg font-semibold text-gray-900">¡Importación Completada!</h3>
-      <p className="text-gray-600">
-        Se importaron <span className="font-bold text-green-600">{datosProcesados.length}</span> productos correctamente.
-      </p>
-      {errores.length > 0 && (
-        <p className="text-yellow-600 text-sm">
-          Se encontraron {errores.length} errores durante la importación.
-        </p>
-      )}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -509,7 +537,7 @@ const ImportarExcelModal = ({ isOpen, onClose, onImportarProductos, loading }) =
           <h2 className="text-xl font-semibold text-gray-900">
             {pasoActual === 1 && 'Importar desde Excel'}
             {pasoActual === 2 && 'Revisar Importación'}
-            {pasoActual === 3 && 'Importación Completada'}
+            {pasoActual === 3 && resultadoImportacion?.errores === 0 ? 'Importación Completada' : 'Resultado de Importación'}
           </h2>
           <button
             onClick={handleClose}

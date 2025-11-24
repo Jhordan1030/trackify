@@ -1,4 +1,4 @@
-// src/services/api.js - ACTUALIZADO CON ENDPOINT DE ACTUALIZACIÓN
+// src/services/api.js - VERSIÓN PRODUCCIÓN (SIN LOGS)
 const API_URL = import.meta.env.VITE_API_URL || 'https://trackify-backend-lake.vercel.app/api/v1';
 
 class ApiService {
@@ -18,18 +18,11 @@ class ApiService {
     };
 
     try {
-      console.log(`🔄 ${config.method || 'GET'} ${url}`);
-      if (config.body) {
-        console.log('📦 Body enviado:', JSON.parse(config.body));
-      }
-      
       const response = await fetch(url, config);
       
-      // Obtener el texto de la respuesta
       const responseText = await response.text();
       
       if (!response.ok) {
-        // Intentar parsear como JSON para obtener mensaje de error
         let errorData;
         try {
           errorData = JSON.parse(responseText);
@@ -37,25 +30,12 @@ class ApiService {
           errorData = { message: `Error ${response.status}: ${response.statusText}` };
         }
         
-        console.error('❌ Error del servidor:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData: errorData
-        });
-        
         throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      // Parsear la respuesta exitosa
       const data = JSON.parse(responseText);
-      console.log('✅ Respuesta exitosa:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error en request:', {
-        message: error.message,
-        endpoint: url,
-        method: config.method
-      });
       throw error;
     }
   }
@@ -117,17 +97,14 @@ class ApiService {
       return this.post('/inventario/sku', productoData);
     },
     
-    // Endpoint de debug
     crearProductoDebug: (productoData) => {
       return this.post('/inventario/sku-debug', productoData);
     },
     
-    // NUEVO: Actualizar producto
     actualizarProducto: (productoId, productoData) => {
       return this.put(`/inventario/producto/${productoId}`, productoData);
     },
     
-    // ALTERNATIVA: Si el endpoint es diferente
     actualizarProductoAlternativo: (productoId, productoData) => {
       return this.patch(`/inventario/producto/${productoId}`, productoData);
     },
@@ -150,28 +127,24 @@ class ApiService {
       return this.get(`/inventario/movimientos${queryString ? `?${queryString}` : ''}`);
     },
 
-    // NUEVO: Obtener producto por ID (para edición)
     obtenerProducto: (productoId) => {
       return this.get(`/inventario/producto/${productoId}`);
     },
 
-    // NUEVO: Eliminar producto
     eliminarProducto: (productoId) => {
       return this.delete(`/inventario/producto/${productoId}`);
     },
 
-    // NUEVO: Desactivar producto
     desactivarProducto: (productoId) => {
       return this.patch(`/inventario/producto/${productoId}/desactivar`);
     },
 
-    // NUEVO: Reactivar producto
     reactivarProducto: (productoId) => {
       return this.patch(`/inventario/producto/${productoId}/reactivar`);
     }
   };
 
-  // ... resto de los métodos (clientes, pedidos, sistema) se mantienen igual
+  // === CLIENTES ===
   clientes = {
     listar: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
@@ -215,6 +188,7 @@ class ApiService {
     }
   };
 
+  // === PEDIDOS ===
   pedidos = {
     listar: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
@@ -234,7 +208,6 @@ class ApiService {
     },
     
     actualizarEstado: (id, estado, data = {}) => {
-      console.log('🎯 API: Actualizando estado del pedido', { id, estado });
       return this.patch(`/pedidos/${id}/estado`, {
         nuevoEstado: estado,
         ...data
@@ -242,6 +215,7 @@ class ApiService {
     },
   };
 
+  // === SISTEMA ===
   sistema = {
     health: () => {
       return fetch(`${this.baseURL.replace('/api/v1', '')}/health`).then(r => r.json());
