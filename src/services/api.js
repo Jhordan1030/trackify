@@ -1,3 +1,4 @@
+// src/services/api.js - ACTUALIZADO CON ENDPOINT DE ACTUALIZACIÓN
 const API_URL = import.meta.env.VITE_API_URL || 'https://trackify-backend-lake.vercel.app/api/v1';
 
 class ApiService {
@@ -24,16 +25,37 @@ class ApiService {
       
       const response = await fetch(url, config);
       
+      // Obtener el texto de la respuesta
+      const responseText = await response.text();
+      
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        // Intentar parsear como JSON para obtener mensaje de error
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch {
+          errorData = { message: `Error ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error('❌ Error del servidor:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData: errorData
+        });
+        
         throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
+      // Parsear la respuesta exitosa
+      const data = JSON.parse(responseText);
       console.log('✅ Respuesta exitosa:', data);
       return data;
     } catch (error) {
-      console.error('❌ Error en request:', error);
+      console.error('❌ Error en request:', {
+        message: error.message,
+        endpoint: url,
+        method: config.method
+      });
       throw error;
     }
   }
@@ -71,7 +93,85 @@ class ApiService {
     return this.request(endpoint, { ...options, method: 'DELETE' });
   }
 
-  // === CLIENTES ===
+  // === INVENTARIO ===
+  inventario = {
+    listarSKUs: (params = {}) => {
+      const queryParams = new URLSearchParams();
+      
+      if (params.categoria) queryParams.append('categoria', params.categoria);
+      if (params.stockBajo) queryParams.append('stockBajo', 'true');
+      if (params.activo !== undefined) queryParams.append('activo', params.activo.toString());
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+      if (params.search) queryParams.append('search', params.search);
+
+      const queryString = queryParams.toString();
+      return this.get(`/inventario/skus${queryString ? `?${queryString}` : ''}`);
+    },
+    
+    obtenerSKU: (skuId) => {
+      return this.get(`/inventario/sku/${skuId}`);
+    },
+    
+    crearProducto: (productoData) => {
+      return this.post('/inventario/sku', productoData);
+    },
+    
+    // Endpoint de debug
+    crearProductoDebug: (productoData) => {
+      return this.post('/inventario/sku-debug', productoData);
+    },
+    
+    // NUEVO: Actualizar producto
+    actualizarProducto: (productoId, productoData) => {
+      return this.put(`/inventario/producto/${productoId}`, productoData);
+    },
+    
+    // ALTERNATIVA: Si el endpoint es diferente
+    actualizarProductoAlternativo: (productoId, productoData) => {
+      return this.patch(`/inventario/producto/${productoId}`, productoData);
+    },
+    
+    ajustarStock: (skuId, ajusteData) => {
+      return this.patch(`/inventario/sku/${skuId}/stock`, ajusteData);
+    },
+    
+    obtenerMovimientos: (params = {}) => {
+      const queryParams = new URLSearchParams();
+      
+      if (params.skuId) queryParams.append('skuId', params.skuId.toString());
+      if (params.tipoMovimiento) queryParams.append('tipoMovimiento', params.tipoMovimiento);
+      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
+      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
+      if (params.page) queryParams.append('page', params.page.toString());
+      if (params.limit) queryParams.append('limit', params.limit.toString());
+
+      const queryString = queryParams.toString();
+      return this.get(`/inventario/movimientos${queryString ? `?${queryString}` : ''}`);
+    },
+
+    // NUEVO: Obtener producto por ID (para edición)
+    obtenerProducto: (productoId) => {
+      return this.get(`/inventario/producto/${productoId}`);
+    },
+
+    // NUEVO: Eliminar producto
+    eliminarProducto: (productoId) => {
+      return this.delete(`/inventario/producto/${productoId}`);
+    },
+
+    // NUEVO: Desactivar producto
+    desactivarProducto: (productoId) => {
+      return this.patch(`/inventario/producto/${productoId}/desactivar`);
+    },
+
+    // NUEVO: Reactivar producto
+    reactivarProducto: (productoId) => {
+      return this.patch(`/inventario/producto/${productoId}/reactivar`);
+    }
+  };
+
+  // ... resto de los métodos (clientes, pedidos, sistema) se mantienen igual
   clientes = {
     listar: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
@@ -115,43 +215,6 @@ class ApiService {
     }
   };
 
-  // === PRODUCTOS ===
-  productos = {
-    buscar: (termino) => {
-      // Usamos el endpoint de inventario/skus con filtro de búsqueda
-      return this.get(`/inventario/skus?search=${encodeURIComponent(termino)}&limit=10`);
-    },
-    
-    obtener: (id) => {
-      return this.get(`/productos/${id}`);
-    },
-  };
-
-  // === INVENTARIO ===
-  inventario = {
-    listarSKUs: (params = {}) => {
-      const queryString = new URLSearchParams(params).toString();
-      return this.get(`/inventario/skus${queryString ? `?${queryString}` : ''}`);
-    },
-    
-    obtenerSKU: (skuId) => {
-      return this.get(`/inventario/sku/${skuId}`);
-    },
-    
-    crearSKU: (data) => {
-      return this.post('/inventario/sku', data);
-    },
-    
-    ajustarStock: (skuId, data) => {
-      return this.patch(`/inventario/sku/${skuId}/stock`, data);
-    },
-    
-    movimientos: () => {
-      return this.get('/inventario/movimientos');
-    },
-  };
-
-  // === PEDIDOS ===
   pedidos = {
     listar: (params = {}) => {
       const queryString = new URLSearchParams(params).toString();
@@ -172,15 +235,13 @@ class ApiService {
     
     actualizarEstado: (id, estado, data = {}) => {
       console.log('🎯 API: Actualizando estado del pedido', { id, estado });
-      // CAMBIO CRÍTICO: Enviar 'nuevoEstado' en lugar de 'estado'
       return this.patch(`/pedidos/${id}/estado`, {
-        nuevoEstado: estado,  // ← ESTE ES EL CAMBIO CLAVE
+        nuevoEstado: estado,
         ...data
       });
     },
   };
 
-  // === SISTEMA ===
   sistema = {
     health: () => {
       return fetch(`${this.baseURL.replace('/api/v1', '')}/health`).then(r => r.json());
