@@ -19,20 +19,17 @@ const Inventario = () => {
     const [tipoAjuste, setTipoAjuste] = useState('');
     const [cantidadAjuste, setCantidadAjuste] = useState(1);
     const [motivoAjuste, setMotivoAjuste] = useState('');
-    const [filtroActivo, setFiltroActivo] = useState(true); // Nuevo estado para filtro
 
     useEffect(() => {
         cargarInventario();
-    }, [filtroActivo]); // Recargar cuando cambie el filtro
+    }, []);
 
     const cargarInventario = async () => {
         try {
             setLoading(true);
             setError(null);
             
-            const response = await api.inventario.listarSKUs({ 
-                activo: filtroActivo 
-            });
+            const response = await api.inventario.listarSKUs();
             const datos = response.data || [];
             
             setInventario(Array.isArray(datos) ? datos : []);
@@ -43,68 +40,6 @@ const Inventario = () => {
             setLoading(false);
         }
     };
-
-    // FUNCIÓN PARA DESACTIVAR PRODUCTO
-    const ejecutarDesactivarProducto = async (productoId) => {
-        try {
-            setLoading(true);
-            setError(null);
-            
-            await api.inventario.desactivarProducto(productoId);
-            
-            mostrarAlerta('success', '✅ Producto desactivado correctamente');
-            
-            await cargarInventario();
-        } catch (err) {
-            setError(err.message || 'Error al desactivar producto');
-            
-            let mensajeError = 'Error al desactivar producto: ' + err.message;
-            
-            if (err.message.includes('500')) {
-                mensajeError = '❌ Error del servidor (500). No se pudo desactivar el producto.';
-            } else if (err.message.includes('404')) {
-                mensajeError = '❌ Producto no encontrado.';
-            } else if (err.message.includes('ya está desactivado')) {
-                mensajeError = '❌ El producto ya está desactivado.';
-            }
-            
-            mostrarAlerta('error', mensajeError);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // FUNCIÓN PARA REACTIVAR PRODUCTO
-    const ejecutarReactivarProducto = async (productoId) => {
-        try {
-            setLoading(true);
-            setError(null);
-            
-            await api.inventario.reactivarProducto(productoId);
-            
-            mostrarAlerta('success', '✅ Producto reactivado correctamente');
-            
-            await cargarInventario();
-        } catch (err) {
-            setError(err.message || 'Error al reactivar producto');
-            
-            let mensajeError = 'Error al reactivar producto: ' + err.message;
-            
-            if (err.message.includes('500')) {
-                mensajeError = '❌ Error del servidor (500). No se pudo reactivar el producto.';
-            } else if (err.message.includes('404')) {
-                mensajeError = '❌ Producto no encontrado.';
-            } else if (err.message.includes('ya está activo')) {
-                mensajeError = '❌ El producto ya está activo.';
-            }
-            
-            mostrarAlerta('error', mensajeError);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // ... (las otras funciones se mantienen igual: handleAjustarStock, handleCrearProducto, etc.)
 
     const handleAjustarStock = async (skuId, tipo) => {
         setSkuSeleccionado(skuId);
@@ -126,8 +61,6 @@ const Inventario = () => {
     const handleImportarExcel = () => {
         setShowImportarModal(true);
     };
-
-    // ... (las otras funciones se mantienen igual)
 
     const ejecutarCrearProducto = async (productoData) => {
         try {
@@ -197,7 +130,124 @@ const Inventario = () => {
         }
     };
 
-    // ... (las otras funciones se mantienen igual)
+    const ejecutarImportarProductos = async (productosData) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const resultados = [];
+            const errores = [];
+            
+            for (let i = 0; i < productosData.length; i++) {
+                const productoData = productosData[i];
+                
+                try {
+                    const response = await api.inventario.crearProducto(productoData);
+                    
+                    resultados.push({
+                        producto: productoData.codigoProducto,
+                        exito: true,
+                        data: response
+                    });
+                    
+                } catch (error) {
+                    let mensajeError = error.message;
+                    
+                    // Detectar tipo específico de error
+                    if (error.message.includes('409') || error.message.includes('código de producto ya existe')) {
+                        mensajeError = `El código "${productoData.codigoProducto}" ya existe en el sistema`;
+                    } else if (error.message.includes('categoriaId')) {
+                        mensajeError = `Categoría inválida para "${productoData.codigoProducto}"`;
+                    } else if (error.message.includes('400')) {
+                        mensajeError = `Datos inválidos para "${productoData.codigoProducto}"`;
+                    }
+                    
+                    errores.push({
+                        producto: productoData.codigoProducto,
+                        nombre: productoData.nombre,
+                        error: mensajeError,
+                        datos: productoData
+                    });
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+            
+            // Devolver resultados detallados
+            return {
+                exitosos: resultados.length,
+                errores: errores.length,
+                detalles: {
+                    resultados,
+                    errores
+                }
+            };
+            
+        } catch (err) {
+            throw new Error('Error durante la importación: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const ejecutarAjuste = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            const datosAjuste = {
+                cantidad: parseInt(cantidadAjuste),
+                tipoMovimiento: tipoAjuste,
+                motivo: motivoAjuste || 'Ajuste manual'
+            };
+
+            await api.inventario.ajustarStock(skuSeleccionado, datosAjuste);
+            
+            mostrarAlerta('success', '✅ Stock ajustado correctamente');
+            
+            await cargarInventario();
+            setShowAjusteModal(false);
+            setSkuSeleccionado(null);
+            setTipoAjuste('');
+            setCantidadAjuste(1);
+            setMotivoAjuste('');
+        } catch (err) {
+            setError(err.message || 'Error al ajustar stock');
+            mostrarAlerta('error', '❌ Error al ajustar stock: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // FUNCIÓN PARA ELIMINAR PRODUCTO
+    const ejecutarEliminarProducto = async (productoId) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            await api.inventario.eliminarProducto(productoId);
+            
+            mostrarAlerta('success', '✅ Producto eliminado correctamente');
+            
+            await cargarInventario();
+        } catch (err) {
+            setError(err.message || 'Error al eliminar producto');
+            
+            let mensajeError = 'Error al eliminar producto: ' + err.message;
+            
+            if (err.message.includes('500')) {
+                mensajeError = '❌ Error del servidor (500). No se pudo eliminar el producto.';
+            } else if (err.message.includes('404')) {
+                mensajeError = '❌ Producto no encontrado.';
+            } else if (err.message.includes('409')) {
+                mensajeError = '❌ No se puede eliminar el producto porque tiene movimientos de stock asociados.';
+            }
+            
+            mostrarAlerta('error', mensajeError);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const mostrarAlerta = (tipo, mensaje) => {
         const alertasExistentes = document.querySelectorAll('.custom-alerta');
@@ -263,7 +313,7 @@ const Inventario = () => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
             <div className="space-y-4 sm:space-y-6">
-                {/* Header Principal - Con filtro de estado */}
+                {/* Header Principal - Solo estadísticas */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8">
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
                         <div className="flex-1">
@@ -274,33 +324,9 @@ const Inventario = () => {
                                 Controla tu stock, revisa alertas y realiza ajustes de inventario de forma eficiente
                             </p>
                         </div>
-                        
-                        {/* Filtro de Estado */}
-                        <div className="flex items-center space-x-2 bg-gray-100 rounded-xl p-1">
-                            <button
-                                onClick={() => setFiltroActivo(true)}
-                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                                    filtroActivo 
-                                        ? 'bg-white text-blue-600 shadow-sm' 
-                                        : 'text-gray-600 hover:text-gray-800'
-                                }`}
-                            >
-                                🟢 Activos
-                            </button>
-                            <button
-                                onClick={() => setFiltroActivo(false)}
-                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                                    !filtroActivo 
-                                        ? 'bg-white text-orange-600 shadow-sm' 
-                                        : 'text-gray-600 hover:text-gray-800'
-                                }`}
-                            >
-                                🔴 Desactivados
-                            </button>
-                        </div>
                     </div>
 
-                    {/* Estadísticas Rápidas */}
+                    {/* Estadísticas Rápidas - Mejorado para móviles */}
                     <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 sm:mt-6 md:mt-8">
                         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-5 border-2 border-blue-200 text-center">
                             <p className="text-blue-600 text-xs sm:text-sm font-semibold mb-1 sm:mb-2">TOTAL</p>
@@ -321,7 +347,7 @@ const Inventario = () => {
                     </div>
                 </div>
 
-                {/* Mensajes de Error */}
+                {/* Mensajes de Error Mejorados para móviles */}
                 {error && (
                     <div className="bg-gradient-to-r from-red-50 to-rose-100 rounded-xl sm:rounded-2xl border-l-4 border-l-red-500 p-3 sm:p-4 md:p-6 shadow-sm">
                         <div className="flex justify-between items-start">
@@ -343,7 +369,10 @@ const Inventario = () => {
                     </div>
                 )}
 
-                {/* Lista de Inventario - Pasar las nuevas funciones */}
+                {/* Alertas de Stock */}
+                <StockAlerts inventario={inventario} />
+
+                {/* Lista de Inventario */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8">
                     <InventarioList
                         inventario={inventario}
@@ -352,13 +381,119 @@ const Inventario = () => {
                         onCrearProducto={handleCrearProducto}
                         onEditarProducto={handleEditarProducto}
                         onImportarExcel={handleImportarExcel}
-                        onDesactivarProducto={ejecutarDesactivarProducto}
-                        onReactivarProducto={ejecutarReactivarProducto}
-                        filtroActivo={filtroActivo}
+                        onEliminarProducto={ejecutarEliminarProducto}
                     />
                 </div>
 
-                {/* ... (los modales se mantienen igual) */}
+                {/* Modal de Ajuste de Stock - Mejorado para móviles */}
+                {showAjusteModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-3 sm:p-4 z-50">
+                        <div className="bg-white rounded-xl sm:rounded-2xl max-w-md w-full p-4 sm:p-6 mx-auto shadow-2xl">
+                            <div className="flex items-center justify-between mb-4 sm:mb-6">
+                                <h3 className="text-lg sm:text-xl font-bold text-gray-900">Ajustar Stock</h3>
+                                <button
+                                    onClick={() => setShowAjusteModal(false)}
+                                    className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg sm:rounded-xl transition-colors duration-200"
+                                    disabled={loading}
+                                >
+                                    <span className="text-xl text-gray-500 hover:text-gray-700">×</span>
+                                </button>
+                            </div>
+                            
+                            <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
+                                SKU ID: <span className="font-mono bg-gray-100 px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm font-semibold">{skuSeleccionado}</span> - 
+                                <span className={`ml-2 sm:ml-3 font-bold ${
+                                    tipoAjuste === 'entrada_compra' ? 'text-green-600' : 'text-red-600'
+                                }`}>
+                                    {tipoAjuste === 'entrada_compra' ? 'Agregar' : 'Reducir'} stock
+                                </span>
+                            </p>
+
+                            <div className="space-y-4 sm:space-y-5">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
+                                        Cantidad *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base transition-all duration-300"
+                                        placeholder="0"
+                                        min="1"
+                                        value={cantidadAjuste}
+                                        onChange={(e) => setCantidadAjuste(e.target.value)}
+                                        disabled={loading}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
+                                        Motivo
+                                    </label>
+                                    <input
+                                        type="text"
+                                        className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-sm sm:text-base transition-all duration-300"
+                                        placeholder="Ej: Reposición de inventario, Ajuste por conteo..."
+                                        value={motivoAjuste}
+                                        onChange={(e) => setMotivoAjuste(e.target.value)}
+                                        disabled={loading}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row sm:justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6 pt-4 border-t border-gray-200">
+                                <button
+                                    onClick={() => setShowAjusteModal(false)}
+                                    className="px-4 py-2.5 sm:px-6 sm:py-3 border-2 border-gray-300 text-gray-700 rounded-lg sm:rounded-xl hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-gray-500/20 transition-all duration-300 w-full sm:w-auto text-sm sm:text-base font-semibold disabled:opacity-50"
+                                    disabled={loading}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={ejecutarAjuste}
+                                    className="px-4 py-2.5 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-4 focus:ring-blue-500/20 transition-all duration-300 w-full sm:w-auto text-sm sm:text-base font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/25"
+                                    disabled={loading || !cantidadAjuste || cantidadAjuste < 1}
+                                >
+                                    {loading ? (
+                                        <div className="flex items-center justify-center space-x-2 sm:space-x-3">
+                                            <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                                            <span className="text-xs sm:text-sm">Aplicando...</span>
+                                        </div>
+                                    ) : (
+                                        'Aplicar Ajuste'
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal de Crear Producto */}
+                <CrearProductoModal
+                    isOpen={showCrearModal}
+                    onClose={() => setShowCrearModal(false)}
+                    onCrearProducto={ejecutarCrearProducto}
+                    loading={loading}
+                />
+
+                {/* Modal de Editar Producto */}
+                <EditarProductoModal
+                    isOpen={showEditarModal}
+                    onClose={() => {
+                        setShowEditarModal(false);
+                        setProductoSeleccionado(null);
+                    }}
+                    onEditarProducto={ejecutarEditarProducto}
+                    loading={loading}
+                    producto={productoSeleccionado}
+                />
+
+                {/* Modal de Importar Excel */}
+                <ImportarExcelModal
+                    isOpen={showImportarModal}
+                    onClose={() => setShowImportarModal(false)}
+                    onImportarProductos={ejecutarImportarProductos}
+                    loading={loading}
+                />
             </div>
         </div>
     );
