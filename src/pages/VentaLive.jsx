@@ -67,7 +67,7 @@ const VentaLive = () => {
                             <strong>Subtotal:</strong> ${parseFloat(ventaRegistrada.subtotal).toFixed(2)}
                         </div>
                         <div>
-                            <strong>Envío:</strong> ${parseFloat(ventaRegistrada.costo_envio || 2.5).toFixed(2)}
+                            <strong>Envío:</strong> ${parseFloat(ventaRegistrada.costo_envio || 0).toFixed(2)}
                         </div>
                         <div>
                             <strong>Total:</strong> ${parseFloat(ventaRegistrada.total).toFixed(2)}
@@ -78,6 +78,11 @@ const VentaLive = () => {
                         <div>
                             <strong>ID:</strong> {ventaRegistrada.id}
                         </div>
+                    </div>
+                    <div className="mt-2 p-2 bg-green-100 rounded">
+                        <p className="text-xs text-green-800">
+                            <strong>Nota:</strong> El costo de envío (${parseFloat(ventaRegistrada.costo_envio || 0).toFixed(2)}) ha sido guardado correctamente.
+                        </p>
                     </div>
                 </div>
             )}
@@ -109,6 +114,10 @@ const VentaLive = () => {
                         </li>
                         <li className="flex items-start">
                             <span className="mr-2">•</span>
+                            <span>Ajusta el costo de envío según la ubicación del cliente</span>
+                        </li>
+                        <li className="flex items-start">
+                            <span className="mr-2">•</span>
                             <span>Registra la venta inmediatamente después de la confirmación</span>
                         </li>
                     </ul>
@@ -133,10 +142,14 @@ const VentaLive = () => {
                         </li>
                         <li className="flex items-start">
                             <span className="font-semibold mr-2">4.</span>
-                            <span>Verifica total y confirma venta</span>
+                            <span>Define el costo de envío según la ubicación</span>
                         </li>
                         <li className="flex items-start">
                             <span className="font-semibold mr-2">5.</span>
+                            <span>Verifica total y confirma venta</span>
+                        </li>
+                        <li className="flex items-start">
+                            <span className="font-semibold mr-2">6.</span>
                             <span>¡Listo! El stock se reserva automáticamente</span>
                         </li>
                     </ol>

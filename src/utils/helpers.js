@@ -1,12 +1,12 @@
 import { ESTADOS_PEDIDO } from './constants';
 
-// NUEVA FUNCIÓN AGREGADA - Calcular subtotal de items
+// FUNCIÓN MEJORADA - Calcular subtotal de items
 export const calculateTotal = (items) => {
   if (!items || !Array.isArray(items)) return 0;
   
   return items.reduce((total, item) => {
-    const cantidad = parseInt(item.cantidad) || 0;
-    const precio = parseFloat(item.precioUnitario) || 0;
+    const cantidad = Math.max(0, parseInt(item.cantidad) || 0);
+    const precio = Math.max(0, parseFloat(item.precioUnitario) || 0);
     return total + (cantidad * precio);
   }, 0);
 };

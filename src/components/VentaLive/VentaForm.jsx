@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Plus, ShoppingCart, User as UserIcon, Truck } from 'lucide-react';
+import { Plus, ShoppingCart, User as UserIcon, Truck, Edit } from 'lucide-react';
 import { PLATAFORMAS } from '../../utils/constants';
 import { ItemForm } from './ItemForm';
 import { ClienteSearch } from './ClienteSearch';
@@ -10,8 +10,11 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     usuario: '',
     plataforma: 'tiktok',
     items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
-    clienteData: null
+    clienteData: null,
+    costoEnvio: 2.50
   });
+
+  const [editandoEnvio, setEditandoEnvio] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +30,6 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
       ...prev,
       usuario: cliente.usuario,
       clienteData: cliente,
-      // Si el cliente tiene plataforma, actualizarla
       plataforma: cliente.plataforma || prev.plataforma
     }));
   }, []);
@@ -65,6 +67,23 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
       };
     });
   }, []);
+
+  // Manejar cambio de costo de envío
+  const handleCostoEnvioChange = (e) => {
+    const value = parseFloat(e.target.value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      costoEnvio: Math.max(0, value)
+    }));
+  };
+
+  const activarEdicionEnvio = () => {
+    setEditandoEnvio(true);
+  };
+
+  const desactivarEdicionEnvio = () => {
+    setEditandoEnvio(false);
+  };
 
   const addItem = () => {
     setFormData(prev => ({
@@ -114,7 +133,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         cantidad: parseInt(item.cantidad),
         precioUnitario: parseFloat(item.precioUnitario),
       })),
-      // Incluir datos del cliente si es nuevo
+      costoEnvio: parseFloat(formData.costoEnvio) || 0,
       clienteData: formData.clienteData && !formData.clienteData.id ? formData.clienteData : undefined
     };
 
@@ -128,15 +147,17 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         usuario: '',
         plataforma: 'tiktok',
         items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
-        clienteData: null
+        clienteData: null,
+        costoEnvio: 2.50
       });
+      setEditandoEnvio(false);
     } catch (error) {
       console.error('Error en el formulario:', error);
     }
   };
 
   const subtotal = calculateTotal(formData.items);
-  const costoEnvio = 2.5;
+  const costoEnvio = parseFloat(formData.costoEnvio) || 0;
   const total = subtotal + costoEnvio;
 
   const canSubmit = formData.usuario.trim() && 
@@ -165,7 +186,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </div>
       </div>
 
-      {/* Datos del Cliente MEJORADO */}
+      {/* Datos del Cliente */}
       <div className="border-t border-gray-200 pt-4 md:pt-6">
         <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
           <UserIcon className="w-4 h-4 mr-2" />
@@ -233,7 +254,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </div>
       </div>
 
-      {/* Costo de Envío */}
+      {/* Costo de Envío - ACTUALIZADO */}
       <div className="border-t border-gray-200 pt-4 md:pt-6">
         <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
           <Truck className="w-4 h-4 mr-2" />
@@ -241,14 +262,69 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </h4>
         
         <div className="w-full max-w-xs">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-            <p className="text-sm text-gray-700">
-              <strong>Costo de envío:</strong> $2.50
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Este costo ya está incluido automáticamente en el total del pedido
-            </p>
-          </div>
+          {editandoEnvio ? (
+            <div className="bg-white border border-blue-300 rounded-lg p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Costo de Envío ($)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.costoEnvio}
+                    onChange={handleCostoEnvioChange}
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0.00"
+                    autoFocus
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ingresa 0 para envío gratis
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={desactivarEdicionEnvio}
+                  className="flex-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={desactivarEdicionEnvio}
+                  className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-gray-700">
+                  Costo de envío: <span className="text-blue-700">${costoEnvio.toFixed(2)}</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={activarEdicionEnvio}
+                  className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors"
+                  title="Editar costo de envío"
+                >
+                  <Edit className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500">
+                {costoEnvio === 0 
+                  ? 'Envío gratis para el cliente'
+                  : 'Haz clic en el ícono para modificar el costo'
+                }
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -261,7 +337,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">Costo de Envío:</span>
-            <span className="font-medium text-gray-900">$2.50</span>
+            <span className="font-medium text-gray-900">${costoEnvio.toFixed(2)}</span>
           </div>
           <div className="border-t border-gray-200 pt-2 mt-2">
             <div className="flex items-center justify-between">
