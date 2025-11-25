@@ -1,4 +1,4 @@
-// src/components/Clientes/ClienteForm.jsx
+// src/components/Clientes/ClienteForm.jsx - COMPLETO
 import React, { useState } from 'react';
 import { Search, UserPlus, AlertCircle } from 'lucide-react';
 import { PLATAFORMAS, METODOS_CONTACTO } from '../../utils/constants';
@@ -41,7 +41,6 @@ export const ClienteForm = ({ onBuscarCliente, onCrearCliente, loading, error })
       [name]: value,
     }));
     
-    // Limpiar error del campo cuando el usuario empiece a escribir
     if (errores[name]) {
       setErrores(prev => ({
         ...prev,

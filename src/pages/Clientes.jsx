@@ -1,4 +1,4 @@
-// src/pages/Clientes.jsx
+// src/pages/Clientes.jsx - CON FILTROS MEJORADOS
 import React, { useState, useEffect } from "react";
 import EditarClienteModal from "../components/Clientes/EditarClienteModal";
 import { ClientesList } from "../components/Clientes/ClientesList";
@@ -13,31 +13,42 @@ const Clientes = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Cargar clientes al iniciar
+  // Cargar TODOS los clientes (activos e inactivos)
   useEffect(() => {
-    cargarClientes();
+    cargarTodosLosClientes();
   }, []);
 
-  const cargarClientes = async () => {
+  const cargarTodosLosClientes = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('📥 Cargando clientes...');
+      console.log('📥 Cargando TODOS los clientes (activos e inactivos)...');
       
+      // Primero intentamos cargar todos los clientes sin filtros
       const response = await api.clientes.listar();
-      const datos = response.data || [];
+      console.log('✅ Respuesta completa:', response);
       
-      console.log('✅ Clientes cargados:', datos.length);
-      if (datos.length > 0) {
-        console.log('📍 Ejemplo de cliente con dirección:', {
-          usuario: datos[0].usuario,
-          direccion_linea1: datos[0].direccion_linea1,
-          ciudad: datos[0].ciudad,
-          provincia: datos[0].provincia
-        });
+      let datos = [];
+      if (response && response.success !== false) {
+        if (response.data && Array.isArray(response.data.clientes)) {
+          datos = response.data.clientes;
+        } else if (response.data && Array.isArray(response.data)) {
+          datos = response.data;
+        } else if (Array.isArray(response.clientes)) {
+          datos = response.clientes;
+        } else if (Array.isArray(response)) {
+          datos = response;
+        }
       }
       
-      setClientes(Array.isArray(datos) ? datos : []);
+      console.log('✅ Clientes cargados:', datos.length);
+      
+      // Verificar si hay clientes inactivos
+      const clientesInactivos = datos.filter(cliente => cliente.activo === false);
+      console.log('🔍 Clientes inactivos encontrados:', clientesInactivos.length);
+      
+      setClientes(datos);
+      
     } catch (err) {
       console.error('❌ Error cargando clientes:', err);
       setError(err.message || 'Error al cargar clientes');
@@ -50,9 +61,11 @@ const Clientes = () => {
   const mostrarMensaje = (mensaje, tipo = 'success') => {
     if (tipo === 'success') {
       setSuccess(mensaje);
+      setError(null);
       setTimeout(() => setSuccess(null), 5000);
     } else {
       setError(mensaje);
+      setSuccess(null);
     }
   };
 
@@ -61,19 +74,16 @@ const Clientes = () => {
       setLoading(true);
       setError(null);
       
-      const response = await api.clientes.buscar(usuario, plataforma);
-      console.log('✅ Cliente encontrado:', response.data);
+      const response = await api.clientes.buscarOCrear(usuario, plataforma);
+      console.log('✅ Respuesta búsqueda:', response);
       
-      if (response.data) {
-        mostrarMensaje(`Cliente ${usuario} encontrado`, 'success');
-        await cargarClientes();
-      } else {
-        mostrarMensaje(`No se encontró el cliente ${usuario}`, 'error');
+      if (response && response.data) {
+        mostrarMensaje(`Cliente ${usuario} procesado correctamente`, 'success');
+        await cargarTodosLosClientes();
       }
     } catch (err) {
       console.error('❌ Error buscando cliente:', err);
-      const mensajeError = err.message || 'Error al buscar cliente';
-      mostrarMensaje(mensajeError, 'error');
+      mostrarMensaje(err.message || 'Error al buscar cliente', 'error');
     } finally {
       setLoading(false);
     }
@@ -85,34 +95,21 @@ const Clientes = () => {
       setError(null);
       
       console.log('📤 Creando cliente:', datosCliente);
-      const response = await api.clientes.crear(datosCliente);
+      await api.clientes.crear(datosCliente);
       
-      console.log('✅ Cliente creado:', response.data);
       mostrarMensaje('✅ Cliente creado correctamente', 'success');
+      await cargarTodosLosClientes();
       
-      await cargarClientes();
     } catch (err) {
       console.error('❌ Error creando cliente:', err);
-      const mensajeError = err.message || 'Error al crear cliente';
-      mostrarMensaje(mensajeError, 'error');
+      mostrarMensaje(err.message || 'Error al crear cliente', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleEditarCliente = (cliente) => {
-    console.log('✏️ === INICIANDO EDICIÓN ===');
-    console.log('📋 Cliente completo recibido:', cliente);
-    console.log('📍 Datos de dirección:', {
-      direccion_linea1: cliente.direccion_linea1,
-      direccion_linea2: cliente.direccion_linea2,
-      ciudad: cliente.ciudad,
-      provincia: cliente.provincia,
-      codigo_postal: cliente.codigo_postal,
-      pais: cliente.pais
-    });
-
-    // Pasar el cliente directamente sin modificaciones
+    console.log('✏️ Abriendo modal para editar:', cliente);
     setClienteEditando(cliente);
     setMostrarModal(true);
   };
@@ -123,21 +120,17 @@ const Clientes = () => {
       setError(null);
       
       console.log('🔄 Actualizando cliente ID:', id);
-      console.log('📤 Datos a enviar:', datos);
-      
       await api.clientes.actualizar(id, datos);
       
-      console.log('✅ Cliente actualizado correctamente');
       mostrarMensaje('✅ Cliente actualizado correctamente', 'success');
-      
-      await cargarClientes();
+      await cargarTodosLosClientes();
       
       setMostrarModal(false);
       setClienteEditando(null);
+      
     } catch (err) {
       console.error('❌ Error actualizando cliente:', err);
-      const mensajeError = err.message || 'Error al actualizar cliente';
-      mostrarMensaje(mensajeError, 'error');
+      mostrarMensaje(err.message || 'Error al actualizar cliente', 'error');
     } finally {
       setLoading(false);
     }
@@ -151,14 +144,12 @@ const Clientes = () => {
       console.log('🗑️ Eliminando cliente:', id);
       await api.clientes.eliminar(id);
       
-      console.log('✅ Cliente eliminado correctamente');
       mostrarMensaje('✅ Cliente eliminado correctamente', 'success');
+      await cargarTodosLosClientes();
       
-      await cargarClientes();
     } catch (err) {
       console.error('❌ Error eliminando cliente:', err);
-      const mensajeError = err.message || 'Error al eliminar cliente';
-      mostrarMensaje(mensajeError, 'error');
+      mostrarMensaje(err.message || 'Error al eliminar cliente', 'error');
     } finally {
       setLoading(false);
     }
@@ -172,14 +163,12 @@ const Clientes = () => {
       console.log('🔄 Reactivando cliente:', id);
       await api.clientes.reactivar(id);
       
-      console.log('✅ Cliente reactivado correctamente');
       mostrarMensaje('✅ Cliente reactivado correctamente', 'success');
+      await cargarTodosLosClientes();
       
-      await cargarClientes();
     } catch (err) {
       console.error('❌ Error reactivando cliente:', err);
-      const mensajeError = err.message || 'Error al reactivar cliente';
-      mostrarMensaje(mensajeError, 'error');
+      mostrarMensaje(err.message || 'Error al reactivar cliente', 'error');
     } finally {
       setLoading(false);
     }
@@ -195,41 +184,34 @@ const Clientes = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Gestión de Clientes</h1>
         <p className="text-gray-600">
-          Busca, crea y gestiona los clientes de tu negocio
+          Busca, crea y gestiona todos los clientes (activos e inactivos)
         </p>
       </div>
       
-      {/* Mensajes de éxito */}
+      {/* Mensajes */}
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
           <div className="flex justify-between items-center">
             <span>{success}</span>
-            <button 
-              onClick={() => setSuccess(null)}
-              className="text-green-500 hover:text-green-700 font-bold"
-            >
+            <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700 font-bold">
               ×
             </button>
           </div>
         </div>
       )}
 
-      {/* Mensajes de error */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           <div className="flex justify-between items-center">
             <span>Error: {error}</span>
-            <button 
-              onClick={() => setError(null)}
-              className="text-red-500 hover:text-red-700 font-bold"
-            >
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 font-bold">
               ×
             </button>
           </div>
         </div>
       )}
 
-      {/* Formulario de búsqueda/creación */}
+      {/* Formulario */}
       <ClienteForm 
         onBuscarCliente={handleBuscarCliente}
         onCrearCliente={handleCrearCliente}
@@ -237,7 +219,7 @@ const Clientes = () => {
         error={error}
       />
 
-      {/* Lista de clientes */}
+      {/* Lista de TODOS los clientes */}
       <ClientesList
         clientes={clientes}
         loading={loading}
