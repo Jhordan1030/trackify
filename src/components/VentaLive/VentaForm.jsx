@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Plus, ShoppingCart, User as UserIcon, Truck } from 'lucide-react';
 import { PLATAFORMAS } from '../../utils/constants';
 import { ItemForm } from './ItemForm';
+import { ClienteSearch } from './ClienteSearch';
 import { calculateTotal } from '../../utils/helpers';
 
 export const VentaForm = ({ onRegistrarVenta, loading }) => {
@@ -9,6 +10,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     usuario: '',
     plataforma: 'tiktok',
     items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
+    clienteData: null
   });
 
   const handleInputChange = (e) => {
@@ -19,32 +21,50 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     }));
   };
 
-  // Función corregida para actualizar items
-  const handleItemChange = (index, field, value) => {
-    console.log(`📝 Actualizando item ${index}, campo ${field} a:`, value);
-    
+  // Manejar selección de cliente
+  const handleClienteSelect = useCallback((cliente) => {
+    setFormData(prev => ({
+      ...prev,
+      usuario: cliente.usuario,
+      clienteData: cliente,
+      // Si el cliente tiene plataforma, actualizarla
+      plataforma: cliente.plataforma || prev.plataforma
+    }));
+  }, []);
+
+  const handleClienteChange = useCallback((usuario) => {
+    setFormData(prev => ({
+      ...prev,
+      usuario: usuario
+    }));
+  }, []);
+
+  // Manejar cambio de plataforma desde ClienteSearch
+  const handlePlataformaChange = useCallback((nuevaPlataforma) => {
+    setFormData(prev => ({
+      ...prev,
+      plataforma: nuevaPlataforma || 'tiktok'
+    }));
+  }, []);
+
+  const handleItemChange = useCallback((index, field, value) => {
     setFormData(prev => {
-      // Crear una copia profunda de los items usando map
       const newItems = prev.items.map((item, i) => {
         if (i === index) {
-          const updatedItem = {
+          return {
             ...item,
             [field]: value
           };
-          console.log(`✅ Item ${index} actualizado:`, updatedItem);
-          return updatedItem;
         }
         return item;
       });
-      
-      console.log(`📋 Todos los items actualizados:`, newItems);
       
       return {
         ...prev,
         items: newItems
       };
     });
-  };
+  }, []);
 
   const addItem = () => {
     setFormData(prev => ({
@@ -56,19 +76,23 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
   const removeItem = (index) => {
     if (formData.items.length === 1) return;
     
-    const newItems = formData.items.filter((_, i) => i !== index);
     setFormData(prev => ({
       ...prev,
-      items: newItems,
+      items: prev.items.filter((_, i) => i !== index),
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validación mejorada
+    // Validación
     const itemsValidos = formData.items.every(
-      item => item.skuId && item.skuId !== '' && item.cantidad && item.cantidad > 0 && item.precioUnitario && item.precioUnitario > 0
+      item => item.skuId && 
+      item.skuId !== '' && 
+      item.cantidad && 
+      item.cantidad > 0 && 
+      item.precioUnitario && 
+      item.precioUnitario > 0
     );
 
     if (!itemsValidos) {
@@ -77,7 +101,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
     }
 
     if (!formData.usuario.trim()) {
-      alert('Por favor ingresa el usuario del cliente');
+      alert('Por favor selecciona o crea un cliente');
       return;
     }
 
@@ -90,30 +114,43 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         cantidad: parseInt(item.cantidad),
         precioUnitario: parseFloat(item.precioUnitario),
       })),
+      // Incluir datos del cliente si es nuevo
+      clienteData: formData.clienteData && !formData.clienteData.id ? formData.clienteData : undefined
     };
 
     console.log('📤 Enviando venta:', ventaData);
 
-    await onRegistrarVenta(ventaData);
-
-    // Reset form
-    setFormData({
-      usuario: '',
-      plataforma: 'tiktok',
-      items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
-    });
+    try {
+      await onRegistrarVenta(ventaData);
+      
+      // Reset form
+      setFormData({
+        usuario: '',
+        plataforma: 'tiktok',
+        items: [{ skuId: '', cantidad: 1, precioUnitario: '' }],
+        clienteData: null
+      });
+    } catch (error) {
+      console.error('Error en el formulario:', error);
+    }
   };
 
   const subtotal = calculateTotal(formData.items);
-  const costoEnvio = 2.5; // Costo fijo
+  const costoEnvio = 2.5;
   const total = subtotal + costoEnvio;
 
-  // Verificar si el formulario puede enviarse
   const canSubmit = formData.usuario.trim() && 
-    formData.items.every(item => item.skuId && item.skuId !== '' && item.cantidad > 0 && item.precioUnitario > 0);
+    formData.items.every(item => 
+      item.skuId && 
+      item.skuId !== '' && 
+      item.cantidad > 0 && 
+      item.precioUnitario > 0
+    );
 
-  // DEBUG: Mostrar el estado actual del formulario
-  console.log('📋 Estado completo del formulario:', formData);
+  const getPlataformaLabel = (valor) => {
+    const plataformaObj = PLATAFORMAS.find(p => p.value === valor);
+    return plataformaObj ? plataformaObj.label : valor;
+  };
 
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 space-y-6">
@@ -128,7 +165,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </div>
       </div>
 
-      {/* Datos del Cliente */}
+      {/* Datos del Cliente MEJORADO */}
       <div className="border-t border-gray-200 pt-4 md:pt-6">
         <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
           <UserIcon className="w-4 h-4 mr-2" />
@@ -136,20 +173,13 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Usuario *
-            </label>
-            <input
-              type="text"
-              name="usuario"
-              value={formData.usuario}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-              placeholder="ej: maria_tiktok"
-              required
-            />
-          </div>
+          <ClienteSearch
+            value={formData.usuario}
+            onChange={handleClienteChange}
+            onClienteSelect={handleClienteSelect}
+            plataforma={formData.plataforma}
+            onPlataformaChange={handlePlataformaChange}
+          />
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -168,6 +198,9 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Plataforma seleccionada: <strong>{getPlataformaLabel(formData.plataforma)}</strong>
+            </p>
           </div>
         </div>
       </div>
@@ -200,7 +233,7 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
         </div>
       </div>
 
-      {/* Costo de Envío - SOLO INFORMATIVO */}
+      {/* Costo de Envío */}
       <div className="border-t border-gray-200 pt-4 md:pt-6">
         <h4 className="font-medium text-gray-900 mb-3 md:mb-4 flex items-center text-sm md:text-base">
           <Truck className="w-4 h-4 mr-2" />
@@ -258,7 +291,6 @@ export const VentaForm = ({ onRegistrarVenta, loading }) => {
           )}
         </button>
 
-        {/* Indicador de estado del formulario */}
         {!canSubmit && (
           <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-xs text-yellow-700 text-center">

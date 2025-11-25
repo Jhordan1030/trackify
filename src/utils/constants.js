@@ -3,7 +3,11 @@ export const PLATAFORMAS = [
   { value: 'tiktok', label: 'TikTok' },
   { value: 'instagram', label: 'Instagram' },
   { value: 'facebook', label: 'Facebook' },
-  { value: 'otro', label: 'Otro' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'telegram', label: 'Telegram' },
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'twitter', label: 'Twitter' },
+  { value: 'otro', label: 'Otro' }
 ];
 
 export const METODOS_CONTACTO = [

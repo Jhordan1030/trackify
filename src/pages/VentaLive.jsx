@@ -24,8 +24,8 @@ const VentaLive = () => {
             }, 5000);
         } catch (err) {
             console.error('❌ Error registrando venta:', err);
-            setError(err.message || 'Error al registrar venta');
-            alert('❌ Error al registrar venta: ' + err.message);
+            const errorMessage = err.response?.data?.message || err.message || 'Error al registrar venta';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
