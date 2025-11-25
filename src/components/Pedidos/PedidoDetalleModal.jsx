@@ -1,9 +1,9 @@
-// src/components/Pedidos/PedidoDetalleModal.jsx
+// src/components/Pedidos/PedidoDetalleModal.jsx (actualizado)
 import React from 'react';
 import { 
   X, User, Calendar, Package, DollarSign, Truck, 
   MapPin, Phone, MessageCircle, ShoppingCart, CheckCircle,
-  Clock, AlertCircle
+  Clock, AlertCircle, Printer
 } from 'lucide-react';
 import { formatCurrency, formatDate, getEstadoConfig } from '../../utils/helpers';
 
@@ -12,6 +12,160 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
 
   const estadoConfig = getEstadoConfig(pedido.estado);
 
+  // Función para imprimir comprobante
+  const imprimirComprobante = () => {
+    const ventanaImpresion = window.open('', '_blank');
+    
+    const contenido = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Comprobante - ${pedido.numero_pedido}</title>
+        <style>
+          body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            color: #333;
+          }
+          .header { 
+            text-align: center; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 20px; 
+            margin-bottom: 20px;
+          }
+          .info-section { 
+            margin-bottom: 20px; 
+          }
+          .info-grid { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+            margin-bottom: 20px;
+          }
+          .items-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 20px 0;
+          }
+          .items-table th, .items-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left;
+          }
+          .items-table th { 
+            background-color: #f5f5f5;
+          }
+          .total-section { 
+            text-align: right; 
+            margin-top: 20px; 
+            font-size: 1.2em; 
+            font-weight: bold;
+          }
+          .footer { 
+            margin-top: 40px; 
+            text-align: center; 
+            font-size: 0.8em; 
+            color: #666;
+          }
+          @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>COMPROBANTE DE PEDIDO</h1>
+          <h2>Pedido: ${pedido.numero_pedido}</h2>
+          <p>Fecha: ${formatDate(pedido.fecha_creacion)}</p>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-section">
+            <h3>INFORMACIÓN DEL PEDIDO</h3>
+            <p><strong>Estado:</strong> ${estadoConfig.label}</p>
+            <p><strong>Plataforma:</strong> ${pedido.plataforma}</p>
+            <p><strong>Items:</strong> ${pedido.total_items || 0}</p>
+            <p><strong>Unidades:</strong> ${pedido.total_unidades || 0}</p>
+          </div>
+
+          <div class="info-section">
+            <h3>INFORMACIÓN DEL CLIENTE</h3>
+            <p><strong>Usuario:</strong> ${pedido.cliente_usuario || 'N/A'}</p>
+            <p><strong>Nombre:</strong> ${pedido.cliente_nombre || 'N/A'}</p>
+            <p><strong>Teléfono:</strong> ${pedido.cliente_telefono || 'N/A'}</p>
+          </div>
+        </div>
+
+        ${pedido.direccion_linea1 ? `
+        <div class="info-section">
+          <h3>DIRECCIÓN DE ENVÍO</h3>
+          <p>${pedido.direccion_linea1}</p>
+          ${pedido.direccion_linea2 ? `<p>${pedido.direccion_linea2}</p>` : ''}
+          <p>${pedido.ciudad || ''}${pedido.ciudad && pedido.provincia ? ', ' : ''}${pedido.provincia || ''}</p>
+        </div>
+        ` : ''}
+
+        ${pedido.numero_guia_envio ? `
+        <div class="info-section">
+          <h3>INFORMACIÓN DE ENVÍO</h3>
+          <p><strong>Guía:</strong> ${pedido.numero_guia_envio}</p>
+          ${pedido.empresa_envio ? `<p><strong>Empresa:</strong> ${pedido.empresa_envio}</p>` : ''}
+          ${pedido.fecha_envio ? `<p><strong>Fecha envío:</strong> ${formatDate(pedido.fecha_envio)}</p>` : ''}
+        </div>
+        ` : ''}
+
+        <div class="info-section">
+          <h3>PRODUCTOS</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>SKU</th>
+                <th>Cantidad</th>
+                <th>Precio Unit.</th>
+                <th>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${pedido.items && Array.isArray(pedido.items) ? pedido.items.map(item => `
+                <tr>
+                  <td>${item.producto_nombre || 'Producto'}</td>
+                  <td>${item.sku_codigo || 'N/A'}</td>
+                  <td>${item.cantidad || 0}</td>
+                  <td>${formatCurrency(item.precio_unitario || 0)}</td>
+                  <td>${formatCurrency((item.cantidad || 0) * (item.precio_unitario || 0))}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="5">No hay información de productos</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="total-section">
+          <p>Subtotal: ${formatCurrency(pedido.subtotal || 0)}</p>
+          <p>Envío: ${formatCurrency(pedido.costo_envio || 0)}</p>
+          <p style="font-size: 1.4em; color: #000;">TOTAL: ${formatCurrency(pedido.total || 0)}</p>
+        </div>
+
+        <div class="footer">
+          <p>Comprobante generado el ${new Date().toLocaleDateString()} a las ${new Date().toLocaleTimeString()}</p>
+          <p>Gracias por su compra</p>
+        </div>
+
+        <div class="no-print" style="margin-top: 20px; text-align: center;">
+          <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Imprimir Comprobante
+          </button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    ventanaImpresion.document.write(contenido);
+    ventanaImpresion.document.close();
+  };
+
+  // ... (el resto del código del modal permanece igual)
   const getEstadoIcon = (estado) => {
     const icons = {
       'enviado': Truck,
@@ -29,17 +183,15 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
 
   const getColorClass = (color) => {
     const colorMap = {
-      'blue': 'bg-blue-100 text-blue-600 border-blue-200',
-      'green': 'bg-green-100 text-green-600 border-green-200',
-      'yellow': 'bg-yellow-100 text-yellow-600 border-yellow-200',
-      'red': 'bg-red-100 text-red-600 border-red-200',
-      'gray': 'bg-gray-100 text-gray-600 border-gray-200',
-      'purple': 'bg-purple-100 text-purple-600 border-purple-200'
+      'warning': 'bg-yellow-100 text-yellow-600 border-yellow-200',
+      'success': 'bg-green-100 text-green-600 border-green-200',
+      'info': 'bg-blue-100 text-blue-600 border-blue-200',
+      'primary': 'bg-indigo-100 text-indigo-600 border-indigo-200',
+      'danger': 'bg-red-100 text-red-600 border-red-200'
     };
     return colorMap[color] || 'bg-gray-100 text-gray-600 border-gray-200';
   };
 
-  // Función segura para renderizar texto
   const renderSafeText = (text, defaultValue = 'No disponible') => {
     if (!text && text !== 0) return defaultValue;
     if (typeof text === 'object') return JSON.stringify(text);
@@ -276,25 +428,35 @@ const PedidoDetalleModal = ({ isOpen, onClose, pedido, onActualizarEstado }) => 
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 bg-gray-50">
+        {/* Footer con botón de imprimir */}
+        <div className="flex justify-between items-center p-6 border-t border-gray-200 bg-gray-50">
           <button
-            onClick={onClose}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
+            onClick={imprimirComprobante}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors duration-200 flex items-center space-x-2"
           >
-            Cerrar
+            <Printer className="w-4 h-4" />
+            <span>Imprimir Comprobante</span>
           </button>
-          {onActualizarEstado && (
+          
+          <div className="flex space-x-3">
             <button
-              onClick={() => {
-                onClose();
-                // Aquí podrías abrir el modal de cambio de estado si lo deseas
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
             >
-              Cambiar Estado
+              Cerrar
             </button>
-          )}
+            {onActualizarEstado && (
+              <button
+                onClick={() => {
+                  onClose();
+                  // Aquí podrías abrir el modal de cambio de estado
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
+              >
+                Cambiar Estado
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>
