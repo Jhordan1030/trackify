@@ -19,6 +19,7 @@ const Inventario = () => {
     const [tipoAjuste, setTipoAjuste] = useState('');
     const [cantidadAjuste, setCantidadAjuste] = useState(1);
     const [motivoAjuste, setMotivoAjuste] = useState('');
+    const [filtroActivo, setFiltroActivo] = useState(true); // Nuevo estado para el filtro
 
     useEffect(() => {
         cargarInventario();
@@ -36,6 +37,62 @@ const Inventario = () => {
         } catch (err) {
             setError(err.message || 'Error al cargar inventario');
             setInventario([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // FUNCIÓN PARA DESACTIVAR PRODUCTO
+    const ejecutarDesactivarProducto = async (productoId) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            await api.inventario.desactivarProducto(productoId);
+            
+            mostrarAlerta('success', '✅ Producto desactivado correctamente');
+            
+            await cargarInventario();
+        } catch (err) {
+            setError(err.message || 'Error al desactivar producto');
+            
+            let mensajeError = 'Error al desactivar producto: ' + err.message;
+            
+            if (err.message.includes('500')) {
+                mensajeError = '❌ Error del servidor (500). No se pudo desactivar el producto.';
+            } else if (err.message.includes('404')) {
+                mensajeError = '❌ Producto no encontrado.';
+            }
+            
+            mostrarAlerta('error', mensajeError);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // FUNCIÓN PARA REACTIVAR PRODUCTO
+    const ejecutarReactivarProducto = async (productoId) => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            await api.inventario.reactivarProducto(productoId);
+            
+            mostrarAlerta('success', '✅ Producto reactivado correctamente');
+            
+            await cargarInventario();
+        } catch (err) {
+            setError(err.message || 'Error al reactivar producto');
+            
+            let mensajeError = 'Error al reactivar producto: ' + err.message;
+            
+            if (err.message.includes('500')) {
+                mensajeError = '❌ Error del servidor (500). No se pudo reactivar el producto.';
+            } else if (err.message.includes('404')) {
+                mensajeError = '❌ Producto no encontrado.';
+            }
+            
+            mostrarAlerta('error', mensajeError);
         } finally {
             setLoading(false);
         }
@@ -219,7 +276,7 @@ const Inventario = () => {
         }
     };
 
-    // FUNCIÓN PARA ELIMINAR PRODUCTO
+    // FUNCIÓN PARA ELIMINAR PRODUCTO (si la necesitas)
     const ejecutarEliminarProducto = async (productoId) => {
         try {
             setLoading(true);
@@ -310,6 +367,11 @@ const Inventario = () => {
 
     const estadisticas = obtenerEstadisticas();
 
+    // Filtrar inventario basado en el estado activo/inactivo
+    const inventarioFiltrado = filtroActivo 
+        ? inventario.filter(item => item.activo !== false) // Mostrar solo activos
+        : inventario.filter(item => item.activo === false); // Mostrar solo inactivos
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 md:p-6">
             <div className="space-y-4 sm:space-y-6">
@@ -323,6 +385,30 @@ const Inventario = () => {
                             <p className="text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl">
                                 Controla tu stock, revisa alertas y realiza ajustes de inventario de forma eficiente
                             </p>
+                        </div>
+                        
+                        {/* Filtro de Activos/Inactivos */}
+                        <div className="flex space-x-2">
+                            <button
+                                onClick={() => setFiltroActivo(true)}
+                                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                                    filtroActivo 
+                                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Activos
+                            </button>
+                            <button
+                                onClick={() => setFiltroActivo(false)}
+                                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                                    !filtroActivo 
+                                        ? 'bg-orange-600 text-white shadow-lg shadow-orange-500/25' 
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                Desactivados
+                            </button>
                         </div>
                     </div>
 
@@ -375,13 +461,15 @@ const Inventario = () => {
                 {/* Lista de Inventario */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8">
                     <InventarioList
-                        inventario={inventario}
+                        inventario={inventarioFiltrado} // Usar inventario filtrado
                         loading={loading}
                         onAjustarStock={handleAjustarStock}
                         onCrearProducto={handleCrearProducto}
                         onEditarProducto={handleEditarProducto}
                         onImportarExcel={handleImportarExcel}
-                        onEliminarProducto={ejecutarEliminarProducto}
+                        onDesactivarProducto={ejecutarDesactivarProducto}
+                        onReactivarProducto={ejecutarReactivarProducto}
+                        filtroActivo={filtroActivo}
                     />
                 </div>
 
