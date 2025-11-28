@@ -1,10 +1,10 @@
 // src/pages/Dashboard.jsx - VERSIÓN COMPLETA CORREGIDA
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  Package, 
-  ShoppingCart, 
-  Users, 
+import {
+  Package,
+  ShoppingCart,
+  Users,
   TrendingUp,
   AlertTriangle,
   Building,
@@ -38,7 +38,7 @@ const Dashboard = () => {
       if (isSuperAdmin) {
         // Para super_admin: cargar datos globales
         console.log('🌍 Cargando datos globales para super admin...');
-        
+
         const [empresasRes, inventarioRes, pedidosRes, clientesRes] = await Promise.all([
           api.empresas.getEmpresas().catch(err => {
             console.error('Error cargando empresas:', err);
@@ -93,7 +93,7 @@ const Dashboard = () => {
       } else {
         // Para admin/usuario: cargar datos de su empresa
         console.log('🏢 Cargando datos de empresa para usuario normal...');
-        
+
         const [inventarioRes, pedidosRes, clientesRes] = await Promise.all([
           api.inventario.getInventario().catch(err => {
             console.error('Error cargando inventario:', err);
@@ -219,139 +219,6 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="flex items-center space-x-3">
-              <h1 className="text-2xl font-bold text-gray-900">
-                ¡Bienvenido de vuelta, {user?.nombre || 'Usuario'}!
-              </h1>
-              <button
-                onClick={handleRefresh}
-                disabled={refreshing}
-                className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-                title="Actualizar datos"
-              >
-                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            <p className="text-gray-600 mt-1">
-              {isSuperAdmin 
-                ? 'Panel de control global - Super Administrador' 
-                : `Dashboard de ${user?.empresaNombre || 'tu empresa'}`
-              }
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500">Hoy es</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {new Date().toLocaleDateString('es-ES', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Alertas */}
-      {stats.alertasStock > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
-            <span className="text-yellow-800 font-medium">
-              Tienes {stats.alertasStock} productos con stock bajo
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Loading durante refresh */}
-      {refreshing && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center">
-            <RefreshCw className="w-5 h-5 text-blue-600 mr-2 animate-spin" />
-            <span className="text-blue-800">Actualizando datos...</span>
-          </div>
-        </div>
-      )}
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((card, index) => {
-          const Icon = card.icon;
-          const colorClasses = {
-            blue: 'text-blue-600 bg-blue-50',
-            green: 'text-green-600 bg-green-50',
-            purple: 'text-purple-600 bg-purple-50',
-            orange: 'text-orange-600 bg-orange-50',
-            emerald: 'text-emerald-600 bg-emerald-50'
-          };
-
-          return (
-            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-                  <p className="text-xs text-green-600 font-medium mt-1">{card.change} desde ayer</p>
-                </div>
-                <div className={`p-3 rounded-lg ${colorClasses[card.color]}`}>
-                  <Icon className="w-6 h-6" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button 
-            onClick={() => window.location.href = '/inventario'}
-            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Package className="w-5 h-5 text-blue-600 mr-3" />
-            <span className="text-sm font-medium">Gestionar Inventario</span>
-          </button>
-          <button 
-            onClick={() => window.location.href = '/pedidos'}
-            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <ShoppingCart className="w-5 h-5 text-green-600 mr-3" />
-            <span className="text-sm font-medium">Ver Pedidos</span>
-          </button>
-          <button 
-            onClick={() => window.location.href = '/clientes'}
-            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Users className="w-5 h-5 text-purple-600 mr-3" />
-            <span className="text-sm font-medium">Gestionar Clientes</span>
-          </button>
-          <button 
-            onClick={() => window.location.href = '/venta-live'}
-            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <TrendingUp className="w-5 h-5 text-orange-600 mr-3" />
-            <span className="text-sm font-medium">Venta Live</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Información de debug (solo en desarrollo) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-2">Debug Info</h3>
           <pre className="text-xs text-gray-600">
             {JSON.stringify({
               user: {
@@ -364,9 +231,9 @@ const Dashboard = () => {
               isSuperAdmin
             }, null, 2)}
           </pre>
-        </div>
+        </div >
       )}
-    </div>
+    </div >
   );
 };
 
