@@ -13,8 +13,7 @@ const Inventario = () => {
       setLoading(true);
       setError('');
       const response = await api.inventario.getInventario();
-      
-      // Manejar diferentes estructuras de respuesta
+
       let inventarioData = [];
       if (Array.isArray(response)) {
         inventarioData = response;
@@ -23,7 +22,7 @@ const Inventario = () => {
       } else {
         inventarioData = response?.data || [];
       }
-      
+
       setInventario(inventarioData);
     } catch (err) {
       console.error('Error cargando inventario:', err);
@@ -48,73 +47,7 @@ const Inventario = () => {
 
     try {
       await api.inventario.deleteProducto(productoId);
-      cargarInventario(); // Recargar lista
-    } catch (err) {
-      console.error('Error eliminando producto:', err);
-      alert('Error al desactivar el producto: ' + err.message);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <div className="flex justify-center items-center min-h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando inventario...</p>
-          </div>
-```javascript
-// src/pages/Inventario.jsx
-import React, { useState, useEffect } from 'react';
-import { Package, Plus, Upload, Edit, Trash2, RefreshCw, AlertTriangle } from 'lucide-react';
-import api from '../services/api';
-
-const Inventario = () => {
-  const [inventario, setInventario] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const cargarInventario = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const response = await api.inventario.getInventario();
-      
-      // Manejar diferentes estructuras de respuesta
-      let inventarioData = [];
-      if (Array.isArray(response)) {
-        inventarioData = response;
-      } else if (response && Array.isArray(response.data)) {
-        inventarioData = response.data;
-      } else {
-        inventarioData = response?.data || [];
-      }
-      
-      setInventario(inventarioData);
-    } catch (err) {
-      console.error('Error cargando inventario:', err);
-      setError(err.message || 'Error al cargar el inventario');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    cargarInventario();
-  }, []);
-
-  const productosConStockBajo = inventario.filter(
-    producto => (producto.stock_disponible || producto.stock) <= (producto.stock_minimo || 5)
-  );
-
-  const handleEliminarProducto = async (productoId) => {
-    if (!window.confirm('¿Estás seguro de que quieres desactivar este producto?')) {
-      return;
-    }
-
-    try {
-      await api.inventario.deleteProducto(productoId);
-      cargarInventario(); // Recargar lista
+      cargarInventario();
     } catch (err) {
       console.error('Error eliminando producto:', err);
       alert('Error al desactivar el producto: ' + err.message);
@@ -172,7 +105,6 @@ const Inventario = () => {
         </div>
       )}
 
-      {/* Alertas de stock bajo */}
       {productosConStockBajo.length > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div className="flex items-center space-x-3">
@@ -219,33 +151,31 @@ const Inventario = () => {
                     <h4 className="font-semibold text-gray-900 truncate pr-2">
                       {producto.nombre || producto.producto_nombre}
                     </h4>
-                    <span className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ${
-                      producto.activo !== false
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`px-2 py-1 rounded-full text-xs flex-shrink-0 ${producto.activo !== false
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
-                    }`}>
+                      }`}>
                       {producto.activo !== false ? 'Activo' : 'Inactivo'}
                     </span>
                   </div>
-                  
+
                   <p className="text-sm text-gray-500 mb-2">
                     SKU: {producto.sku || producto.sku_codigo || producto.codigo}
                   </p>
                   <p className="text-sm text-gray-600 mb-3">
                     {producto.categoria || 'Sin categoría'}
                   </p>
-                  
+
                   <div className="flex justify-between items-center mb-3">
                     <div>
                       <p className="text-lg font-bold text-gray-900">
                         ${(producto.precio_venta || producto.precio)?.toLocaleString()}
                       </p>
                     </div>
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      (producto.stock_disponible || producto.stock) <= (producto.stock_minimo || 5)
+                    <div className={`px-2 py-1 rounded text-xs font-medium ${(producto.stock_disponible || producto.stock) <= (producto.stock_minimo || 5)
                         ? 'bg-red-100 text-red-800'
                         : 'bg-green-100 text-green-800'
-                    }`}>
+                      }`}>
                       Stock: {producto.stock_disponible || producto.stock}
                     </div>
                   </div>
@@ -255,7 +185,7 @@ const Inventario = () => {
                       <Edit className="w-3 h-3" />
                       <span>Editar</span>
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleEliminarProducto(producto.id || producto.producto_id)}
                       className="flex-1 px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 flex items-center justify-center space-x-1"
                     >
@@ -274,4 +204,3 @@ const Inventario = () => {
 };
 
 export default Inventario;
-```
