@@ -1,356 +1,371 @@
-// src/pages/Dashboard.jsx
-import { useState, useEffect } from 'react';
-
-// Usar la URL desde las variables de entorno
-const API_URL = import.meta.env.VITE_API_URL || 'https://trackify-backend-lake.vercel.app/api/v1';
+// src/pages/Dashboard.jsx - VERSIÓN COMPLETA CORREGIDA
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { 
+  Package, 
+  ShoppingCart, 
+  Users, 
+  TrendingUp,
+  AlertTriangle,
+  Building,
+  RefreshCw
+} from 'lucide-react';
+import api from '../services/api';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({});
-  const [pedidos, setPedidos] = useState([]);
-  const [inventario, setInventario] = useState([]);
-  const [clientes, setClientes] = useState([]);
+  const { user, isSuperAdmin } = useAuth();
+  const [stats, setStats] = useState({
+    totalProductos: 0,
+    totalPedidos: 0,
+    totalClientes: 0,
+    ventasHoy: 0,
+    alertasStock: 0,
+    totalEmpresas: 0
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeView, setActiveView] = useState('overview');
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Función para cargar todos los datos
-  const cargarDatos = async () => {
+  const loadDashboardData = async () => {
     try {
-      setLoading(true);
       setError(null);
-      
-      console.log('🔄 Cargando datos del dashboard...');
+      setRefreshing(true);
 
-      // Hacer todas las llamadas en paralelo
-      const [statsRes, pedidosRes, inventarioRes, clientesRes] = await Promise.all([
-        fetch(`${API_URL}/pedidos/estadisticas`),
-        fetch(`${API_URL}/pedidos`),
-        fetch(`${API_URL}/inventario/skus`),
-        fetch(`${API_URL}/clientes`)
-      ]);
+      console.log('📊 Cargando datos del dashboard...');
+      console.log('👤 Usuario actual:', user);
+      console.log('👑 Es super admin:', isSuperAdmin);
 
-      // Verificar respuestas
-      if (!statsRes.ok) throw new Error(`Error stats: ${statsRes.status}`);
-      if (!pedidosRes.ok) throw new Error(`Error pedidos: ${pedidosRes.status}`);
-      if (!inventarioRes.ok) throw new Error(`Error inventario: ${inventarioRes.status}`);
-      if (!clientesRes.ok) throw new Error(`Error clientes: ${clientesRes.status}`);
+      if (isSuperAdmin) {
+        // Para super_admin: cargar datos globales
+        console.log('🌍 Cargando datos globales para super admin...');
+        
+        const [empresasRes, inventarioRes, pedidosRes, clientesRes] = await Promise.all([
+          api.empresas.getEmpresas().catch(err => {
+            console.error('Error cargando empresas:', err);
+            return { data: [] };
+          }),
+          api.inventario.getInventarioTodos().catch(err => {
+            console.error('Error cargando inventario:', err);
+            return { data: [] };
+          }),
+          api.pedidos.getPedidos().catch(err => {
+            console.error('Error cargando pedidos:', err);
+            return { data: [] };
+          }),
+          api.clientes.getClientes().catch(err => {
+            console.error('Error cargando clientes:', err);
+            return { data: [] };
+          })
+        ]);
 
-      // Convertir a JSON
-      const statsData = await statsRes.json();
-      const pedidosData = await pedidosRes.json();
-      const inventarioData = await inventarioRes.json();
-      const clientesData = await clientesRes.json();
+        console.log('📦 Respuestas recibidas:', {
+          empresas: empresasRes,
+          inventario: inventarioRes,
+          pedidos: pedidosRes,
+          clientes: clientesRes
+        });
 
-      console.log('✅ Datos cargados correctamente');
+        const empresas = Array.isArray(empresasRes) ? empresasRes : (empresasRes.data || []);
+        const inventario = Array.isArray(inventarioRes) ? inventarioRes : (inventarioRes.data || []);
+        const pedidos = Array.isArray(pedidosRes) ? pedidosRes : (pedidosRes.data || []);
+        const clientes = Array.isArray(clientesRes) ? clientesRes : (clientesRes.data || []);
 
-      // Actualizar estados
-      setStats(statsData.data || {});
-      setPedidos(pedidosData.data || []);
-      setInventario(inventarioData.data || []);
-      setClientes(clientesData.data || []);
+        console.log('📊 Datos procesados:', {
+          empresas: empresas.length,
+          inventario: inventario.length,
+          pedidos: pedidos.length,
+          clientes: clientes.length
+        });
+
+        setStats({
+          totalProductos: inventario.length,
+          totalPedidos: pedidos.length,
+          totalClientes: clientes.length,
+          ventasHoy: pedidos.filter(p => p.estado === 'entregado').length,
+          alertasStock: inventario.filter(p => {
+            const stock = p.stock_disponible || p.stock || 0;
+            const stockMinimo = p.stock_minimo || 5;
+            return stock <= stockMinimo;
+          }).length,
+          totalEmpresas: empresas.length
+        });
+
+      } else {
+        // Para admin/usuario: cargar datos de su empresa
+        console.log('🏢 Cargando datos de empresa para usuario normal...');
+        
+        const [inventarioRes, pedidosRes, clientesRes] = await Promise.all([
+          api.inventario.getInventario().catch(err => {
+            console.error('Error cargando inventario:', err);
+            return { data: [] };
+          }),
+          api.pedidos.getPedidos().catch(err => {
+            console.error('Error cargando pedidos:', err);
+            return { data: [] };
+          }),
+          api.clientes.getClientes().catch(err => {
+            console.error('Error cargando clientes:', err);
+            return { data: [] };
+          })
+        ]);
+
+        const inventario = Array.isArray(inventarioRes) ? inventarioRes : (inventarioRes.data || []);
+        const pedidos = Array.isArray(pedidosRes) ? pedidosRes : (pedidosRes.data || []);
+        const clientes = Array.isArray(clientesRes) ? clientesRes : (clientesRes.data || []);
+
+        setStats({
+          totalProductos: inventario.length,
+          totalPedidos: pedidos.length,
+          totalClientes: clientes.length,
+          ventasHoy: pedidos.filter(p => p.estado === 'entregado').length,
+          alertasStock: inventario.filter(p => {
+            const stock = p.stock_disponible || p.stock || 0;
+            const stockMinimo = p.stock_minimo || 5;
+            return stock <= stockMinimo;
+          }).length,
+          totalEmpresas: 0
+        });
+      }
+
+      console.log('✅ Datos del dashboard cargados exitosamente');
 
     } catch (err) {
-      console.error('❌ Error cargando datos:', err);
-      setError(err.message);
+      console.error('❌ Error cargando dashboard:', err);
+      setError(err.message || 'Error al cargar los datos del dashboard');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
-
-  const handleQuickAction = (action) => {
-    switch (action) {
-      case 'venta-rapida':
-        window.location.href = '/venta-live';
-        break;
-      case 'agregar-producto':
-        window.location.href = '/inventario';
-        break;
-      case 'buscar-cliente':
-        window.location.href = '/clientes';
-        break;
-      case 'actualizar':
-        cargarDatos();
-        break;
-      default:
-        break;
+    if (user) {
+      loadDashboardData();
     }
+  }, [user, isSuperAdmin]);
+
+  const handleRefresh = () => {
+    loadDashboardData();
   };
 
-  if (loading) {
+  const statCards = [
+    ...(isSuperAdmin ? [{
+      title: 'Total Empresas',
+      value: stats.totalEmpresas,
+      icon: Building,
+      color: 'purple',
+      change: '+2%'
+    }] : []),
+    {
+      title: 'Total Productos',
+      value: stats.totalProductos,
+      icon: Package,
+      color: 'blue',
+      change: '+12%'
+    },
+    {
+      title: 'Pedidos Activos',
+      value: stats.totalPedidos,
+      icon: ShoppingCart,
+      color: 'green',
+      change: '+5%'
+    },
+    {
+      title: 'Total Clientes',
+      value: stats.totalClientes,
+      icon: Users,
+      color: 'orange',
+      change: '+8%'
+    },
+    {
+      title: 'Ventas Hoy',
+      value: stats.ventasHoy,
+      icon: TrendingUp,
+      color: 'emerald',
+      change: '+15%'
+    }
+  ];
+
+  if (loading && !refreshing) {
     return (
-      <div className="p-6">
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando datos del dashboard...</p>
-          </div>
+      <div className="flex justify-center items-center min-h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !refreshing) {
     return (
       <div className="p-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <strong>Error:</strong> {error}
-          <button 
-            onClick={cargarDatos}
-            className="ml-4 bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-          >
-            Reintentar
-          </button>
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <h3 className="text-red-800 font-medium mb-2">Error al cargar el dashboard</h3>
+          <p className="text-red-600 text-sm mb-4">{error}</p>
+          <div className="flex space-x-3">
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+            >
+              Ir al Login
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Dashboard</h1>
-          <p className="text-gray-600">
-            Resumen general de tu negocio y actividad reciente
-          </p>
-        </div>
-        
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setActiveView('overview')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeView === 'overview'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Resumen
-          </button>
-          <button
-            onClick={() => setActiveView('analytics')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              activeView === 'analytics'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Análisis
-          </button>
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-bold text-gray-900">
+                ¡Bienvenido de vuelta, {user?.nombre || 'Usuario'}!
+              </h1>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+                title="Actualizar datos"
+              >
+                <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+            <p className="text-gray-600 mt-1">
+              {isSuperAdmin 
+                ? 'Panel de control global - Super Administrador' 
+                : `Dashboard de ${user?.empresaNombre || 'tu empresa'}`
+              }
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-500">Hoy es</p>
+            <p className="text-lg font-semibold text-gray-900">
+              {new Date().toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Tarjetas de estadísticas */}
+      {/* Alertas */}
+      {stats.alertasStock > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertTriangle className="w-5 h-5 text-yellow-600 mr-2" />
+            <span className="text-yellow-800 font-medium">
+              Tienes {stats.alertasStock} productos con stock bajo
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Loading durante refresh */}
+      {refreshing && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <RefreshCw className="w-5 h-5 text-blue-600 mr-2 animate-spin" />
+            <span className="text-blue-800">Actualizando datos...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <span className="text-2xl">💰</span>
-            </div>
-            <span className="text-green-600 text-sm font-medium">+12.5%</span>
-          </div>
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Ventas Totales</h3>
-          <p className="text-2xl font-bold text-gray-900">
-            ${parseFloat(stats.ingresos_totales || 0).toFixed(2)}
-          </p>
-        </div>
+        {statCards.map((card, index) => {
+          const Icon = card.icon;
+          const colorClasses = {
+            blue: 'text-blue-600 bg-blue-50',
+            green: 'text-green-600 bg-green-50',
+            purple: 'text-purple-600 bg-purple-50',
+            orange: 'text-orange-600 bg-orange-50',
+            emerald: 'text-emerald-600 bg-emerald-50'
+          };
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-green-50 rounded-lg">
-              <span className="text-2xl">📦</span>
+          return (
+            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">{card.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
+                  <p className="text-xs text-green-600 font-medium mt-1">{card.change} desde ayer</p>
+                </div>
+                <div className={`p-3 rounded-lg ${colorClasses[card.color]}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+              </div>
             </div>
-            <span className="text-green-600 text-sm font-medium">+5.2%</span>
-          </div>
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Pedidos</h3>
-          <p className="text-2xl font-bold text-gray-900">{stats.total_pedidos || 0}</p>
-        </div>
+          );
+        })}
+      </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-yellow-50 rounded-lg">
-              <span className="text-2xl">👥</span>
-            </div>
-            <span className="text-green-600 text-sm font-medium">+2.4%</span>
-          </div>
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Clientes</h3>
-          <p className="text-2xl font-bold text-gray-900">{clientes.length}</p>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <span className="text-2xl">📊</span>
-            </div>
-            <span className="text-green-600 text-sm font-medium">+3.1%</span>
-          </div>
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Ticket Promedio</h3>
-          <p className="text-2xl font-bold text-gray-900">
-            ${parseFloat(stats.ticket_promedio || 0).toFixed(2)}
-          </p>
+      {/* Quick Actions */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <button 
+            onClick={() => window.location.href = '/inventario'}
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Package className="w-5 h-5 text-blue-600 mr-3" />
+            <span className="text-sm font-medium">Gestionar Inventario</span>
+          </button>
+          <button 
+            onClick={() => window.location.href = '/pedidos'}
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <ShoppingCart className="w-5 h-5 text-green-600 mr-3" />
+            <span className="text-sm font-medium">Ver Pedidos</span>
+          </button>
+          <button 
+            onClick={() => window.location.href = '/clientes'}
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Users className="w-5 h-5 text-purple-600 mr-3" />
+            <span className="text-sm font-medium">Gestionar Clientes</span>
+          </button>
+          <button 
+            onClick={() => window.location.href = '/venta-live'}
+            className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <TrendingUp className="w-5 h-5 text-orange-600 mr-3" />
+            <span className="text-sm font-medium">Venta Live</span>
+          </button>
         </div>
       </div>
 
-      {/* Grid principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Actividad reciente */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-semibold text-gray-900">Actividad Reciente</h2>
-              <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {pedidos.length} actividades
-              </span>
-            </div>
-
-            <div className="space-y-4">
-              {pedidos.slice(0, 6).map((pedido) => (
-                <div key={pedido.id} className="flex items-center space-x-4 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all duration-200">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {pedido.cliente_usuario || 'Cliente'}
-                      </p>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-500 capitalize">{pedido.plataforma}</span>
-                    </div>
-                    <div className="flex items-center space-x-2 text-xs text-gray-500">
-                      <span>📅</span>
-                      <span>
-                        {new Date(pedido.fecha_creacion).toLocaleDateString('es-ES', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900 mb-1">
-                      ${parseFloat(pedido.total).toFixed(2)}
-                    </p>
-                    <span className={`inline-block px-2 py-1 text-xs rounded-full capitalize ${
-                      pedido.estado === 'entregado' ? 'bg-green-100 text-green-800' :
-                      pedido.estado === 'enviado' ? 'bg-blue-100 text-blue-800' :
-                      pedido.estado === 'cancelado' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {pedido.estado}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {pedidos.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
-                  Ver todos los pedidos →
-                </button>
-              </div>
-            )}
-          </div>
+      {/* Información de debug (solo en desarrollo) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-gray-900 mb-2">Debug Info</h3>
+          <pre className="text-xs text-gray-600">
+            {JSON.stringify({
+              user: {
+                id: user?.id,
+                email: user?.email,
+                rol: user?.rol,
+                empresaId: user?.empresaId
+              },
+              stats,
+              isSuperAdmin
+            }, null, 2)}
+          </pre>
         </div>
-        
-        {/* Columna derecha */}
-        <div className="space-y-6">
-          {/* Acciones rápidas */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => handleQuickAction('venta-rapida')}
-                className="p-4 rounded-xl border-2 border-green-100 bg-green-50 hover:bg-green-100 hover:border-green-200 transition-all duration-200 group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-green-500 group-hover:scale-110 transition-transform">
-                    <span className="text-white">🛒</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900 text-sm">Nueva Venta</p>
-                    <p className="text-xs text-gray-600">Registrar venta rápida</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('agregar-producto')}
-                className="p-4 rounded-xl border-2 border-blue-100 bg-blue-50 hover:bg-blue-100 hover:border-blue-200 transition-all duration-200 group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-blue-500 group-hover:scale-110 transition-transform">
-                    <span className="text-white">📦</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900 text-sm">Agregar Producto</p>
-                    <p className="text-xs text-gray-600">Añadir al inventario</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('buscar-cliente')}
-                className="p-4 rounded-xl border-2 border-yellow-100 bg-yellow-50 hover:bg-yellow-100 hover:border-yellow-200 transition-all duration-200 group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-yellow-500 group-hover:scale-110 transition-transform">
-                    <span className="text-white">👥</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900 text-sm">Buscar Cliente</p>
-                    <p className="text-xs text-gray-600">Encontrar o crear</p>
-                  </div>
-                </div>
-              </button>
-
-              <button
-                onClick={() => handleQuickAction('actualizar')}
-                className="p-4 rounded-xl border-2 border-gray-100 bg-gray-50 hover:bg-gray-100 hover:border-gray-200 transition-all duration-200 group"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 rounded-lg bg-gray-500 group-hover:scale-110 transition-transform">
-                    <span className="text-white">🔄</span>
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-gray-900 text-sm">Actualizar</p>
-                    <p className="text-xs text-gray-600">Refrescar datos</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Resumen rápido */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Resumen Rápido
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Clientes Activos:</span>
-                <span className="font-semibold text-gray-900">{clientes.length}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Productos en Stock:</span>
-                <span className="font-semibold text-green-600">{inventario.length}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Pedidos del Mes:</span>
-                <span className="font-semibold text-blue-600">{stats.total_pedidos || 0}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                <span className="text-gray-600">Tasa de Conversión:</span>
-                <span className="font-semibold text-yellow-600">-</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

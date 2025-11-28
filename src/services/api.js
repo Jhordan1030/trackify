@@ -1,528 +1,361 @@
-// src/services/api.js - COMPLETO CON ENDPOINTS ADICIONALES
-const API_URL = import.meta.env.VITE_API_URL || 'https://trackify-backend-lake.vercel.app/api/v1';
+// src/services/api.js - MOCK VERSION FOR DEMO
+// NO PERSISTENCE - DATA RESETS ON RELOAD
 
-class ApiService {
-  constructor() {
-    this.baseURL = API_URL;
-    console.log('🔗 Conectando a API:', this.baseURL);
-  }
+// --- MOCK DATA ---
 
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      ...options,
+const mockData = {
+  user: {
+    id: '3',
+    nombre: 'Vendedor Demo',
+    email: 'vendedor@trackify.demo',
+    rol: 'usuario',
+    empresaId: '1',
+    empresaNombre: 'Trackify Demo Corp'
+  },
+  empresas: [
+    { id: '1', nombre: 'Trackify Demo Corp', ruc: '20123456789', direccion: 'Av. Demo 123', telefono: '555-0001', estado: 'activo', createdAt: new Date().toISOString() },
+    { id: '2', nombre: 'Cliente Ejemplo SAC', ruc: '20987654321', direccion: 'Jr. Prueba 456', telefono: '555-0002', estado: 'activo', createdAt: new Date().toISOString() }
+  ],
+  usuarios: [
+    { id: '1', nombre: 'Demo Super Admin', email: 'admin@trackify.demo', rol: 'super_admin', empresaId: '1', estado: 'activo' },
+    { id: '2', nombre: 'Gerente Demo', email: 'gerente@cliente.demo', rol: 'admin', empresaId: '2', estado: 'activo' },
+    { id: '3', nombre: 'Vendedor Demo', email: 'vendedor@trackify.demo', rol: 'usuario', empresaId: '1', estado: 'activo' }
+  ],
+  inventario: [
+    { id: '101', sku: 'LAP-001', nombre: 'Laptop Gamer Pro', descripcion: 'Laptop de alta gama', precio: 1500.00, stock: 25, categoria: 'Electrónica', estado: 'activo' },
+    { id: '102', sku: 'MOU-002', nombre: 'Mouse Inalámbrico', descripcion: 'Mouse ergonómico', precio: 25.50, stock: 150, categoria: 'Accesorios', estado: 'activo' },
+    { id: '103', sku: 'MON-003', nombre: 'Monitor 27" 4K', descripcion: 'Monitor IPS', precio: 350.00, stock: 10, categoria: 'Electrónica', estado: 'activo' },
+    { id: '104', sku: 'KEY-004', nombre: 'Teclado Mecánico', descripcion: 'Switch Blue', precio: 80.00, stock: 45, categoria: 'Accesorios', estado: 'activo' }
+  ],
+  clientes: [
+    { id: '201', nombre: 'Juan Pérez', email: 'juan@mail.com', telefono: '999888777', documento: '44556677', tipoDocumento: 'DNI', direccion: 'Calle 1', usuario: 'juanperez', nombre_completo: 'Juan Pérez', plataforma: 'Web' },
+    { id: '202', nombre: 'Empresa ABC', email: 'contacto@abc.com', telefono: '999111222', documento: '20100200300', tipoDocumento: 'RUC', direccion: 'Av. Industrial 500', usuario: 'empresaabc', nombre_completo: 'Empresa ABC S.A.C.', plataforma: 'Tienda' }
+  ],
+  pedidos: [
+    {
+      id: '301',
+      cliente: { nombre: 'Juan Pérez' },
+      total: 1525.50,
+      estado: 'completado',
+      fecha: new Date(Date.now() - 86400000).toISOString(),
+      items: [
+        { producto: 'Laptop Gamer Pro', cantidad: 1, precio: 1500.00 },
+        { producto: 'Mouse Inalámbrico', cantidad: 1, precio: 25.50 }
+      ]
+    },
+    {
+      id: '302',
+      cliente: { nombre: 'Empresa ABC' },
+      total: 3500.00,
+      estado: 'pendiente_pago',
+      fecha: new Date().toISOString(),
+      items: [
+        { producto: 'Monitor 27" 4K', cantidad: 10, precio: 350.00 }
+      ]
+    }
+  ],
+  auditoria: [
+    { id: '1', accion: 'LOGIN', usuario: 'Demo Super Admin', fecha: new Date().toISOString(), detalle: 'Inicio de sesión exitoso' }
+  ]
+};
+
+// --- HELPER FUNCTIONS ---
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
+// --- MOCK API IMPLEMENTATION ---
+
+export const authAPI = {
+  login: async (email, password) => {
+    await delay(500);
+    return {
+      success: true,
+      data: {
+        token: 'mock-token-123',
+        user: mockData.user
+      }
     };
+  },
 
-    if (config.body && typeof config.body === 'object') {
-      config.body = JSON.stringify(config.body);
+  logout: async () => {
+    await delay(200);
+    return { success: true };
+  },
+
+  getProfile: async () => {
+    await delay(300);
+    return { success: true, data: mockData.user };
+  },
+
+  verifyToken: async () => {
+    await delay(200);
+    return { success: true, data: { valid: true, user: mockData.user } };
+  },
+
+  changePassword: async (currentPassword, newPassword) => {
+    await delay(500);
+    return { success: true, message: 'Contraseña actualizada (Demo)' };
+  }
+};
+
+export const empresasAPI = {
+  getEmpresas: async () => {
+    await delay(400);
+    return { success: true, data: mockData.empresas };
+  },
+
+  createEmpresa: async (empresaData) => {
+    await delay(500);
+    const newEmpresa = { ...empresaData, id: generateId(), createdAt: new Date().toISOString(), estado: 'activo' };
+    mockData.empresas.push(newEmpresa);
+    return { success: true, data: newEmpresa };
+  },
+
+  updateEmpresa: async (id, empresaData) => {
+    await delay(400);
+    const index = mockData.empresas.findIndex(e => e.id === id);
+    if (index !== -1) {
+      mockData.empresas[index] = { ...mockData.empresas[index], ...empresaData };
+      return { success: true, data: mockData.empresas[index] };
     }
+    return { success: false, error: 'Empresa no encontrada' };
+  },
 
-    try {
-      console.log('🚀 Request:', url, config.method);
-      const response = await fetch(url, config);
-      
-      if (response.status === 204) {
-        return { success: true };
+  toggleEmpresaStatus: async (id) => {
+    await delay(300);
+    const index = mockData.empresas.findIndex(e => e.id === id);
+    if (index !== -1) {
+      mockData.empresas[index].estado = mockData.empresas[index].estado === 'activo' ? 'inactivo' : 'activo';
+      return { success: true, data: mockData.empresas[index] };
+    }
+    return { success: false, error: 'Empresa no encontrada' };
+  }
+};
+
+export const usuariosAPI = {
+  getUsuarios: async () => {
+    await delay(400);
+    return { success: true, data: mockData.usuarios };
+  },
+
+  getUsuariosByEmpresa: async (empresaId) => {
+    await delay(400);
+    const usuarios = mockData.usuarios.filter(u => u.empresaId === empresaId);
+    return { success: true, data: usuarios };
+  },
+
+  createUsuario: async (usuarioData) => {
+    await delay(500);
+    const newUsuario = { ...usuarioData, id: generateId(), estado: 'activo' };
+    mockData.usuarios.push(newUsuario);
+    return { success: true, data: newUsuario };
+  },
+
+  updateUsuario: async (id, usuarioData) => {
+    await delay(400);
+    const index = mockData.usuarios.findIndex(u => u.id === id);
+    if (index !== -1) {
+      mockData.usuarios[index] = { ...mockData.usuarios[index], ...usuarioData };
+      return { success: true, data: mockData.usuarios[index] };
+    }
+    return { success: false, error: 'Usuario no encontrado' };
+  },
+
+  toggleUsuarioStatus: async (id) => {
+    await delay(300);
+    const index = mockData.usuarios.findIndex(u => u.id === id);
+    if (index !== -1) {
+      mockData.usuarios[index].estado = mockData.usuarios[index].estado === 'activo' ? 'inactivo' : 'activo';
+      return { success: true, data: mockData.usuarios[index] };
+    }
+    return { success: false, error: 'Usuario no encontrado' };
+  }
+};
+
+export const inventarioAPI = {
+  getInventario: async () => {
+    await delay(400);
+    return { success: true, data: mockData.inventario };
+  },
+
+  getInventarioTodos: async () => {
+    await delay(400);
+    return { success: true, data: mockData.inventario };
+  },
+
+  createProducto: async (productoData) => {
+    await delay(500);
+    const newProducto = {
+      ...productoData,
+      id: generateId(),
+      estado: 'activo',
+      stock_disponible: productoData.stock || 0,
+      stock_minimo: 5
+    };
+    mockData.inventario.push(newProducto);
+    return { success: true, data: newProducto };
+  },
+
+  updateProducto: async (id, productoData) => {
+    await delay(400);
+    const index = mockData.inventario.findIndex(p => p.id === id);
+    if (index !== -1) {
+      mockData.inventario[index] = { ...mockData.inventario[index], ...productoData };
+      return { success: true, data: mockData.inventario[index] };
+    }
+    return { success: false, error: 'Producto no encontrado' };
+  },
+
+  deleteProducto: async (id) => {
+    await delay(300);
+    const index = mockData.inventario.findIndex(p => p.id === id);
+    if (index !== -1) {
+      mockData.inventario[index].estado = 'inactivo';
+      return { success: true, message: 'Producto desactivado' };
+    }
+    return { success: false, error: 'Producto no encontrado' };
+  }
+};
+
+export const pedidosAPI = {
+  // Alias for compatibility
+  listar: async () => {
+    await delay(400);
+    return { success: true, data: mockData.pedidos };
+  },
+
+  obtener: async (id) => {
+    await delay(300);
+    const pedido = mockData.pedidos.find(p => p.id === id);
+    if (pedido) {
+      return { success: true, data: pedido };
+    }
+    return { success: false, error: 'Pedido no encontrado' };
+  },
+
+  actualizarEstado: async (id, nuevoEstado) => {
+    await delay(400);
+    const index = mockData.pedidos.findIndex(p => p.id === id);
+    if (index !== -1) {
+      mockData.pedidos[index].estado = nuevoEstado;
+      return { success: true, data: mockData.pedidos[index] };
+    }
+    return { success: false, error: 'Pedido no encontrado' };
+  },
+
+  getPedidos: async () => {
+    await delay(400);
+    return { success: true, data: mockData.pedidos };
+  },
+
+  createPedido: async (pedidoData) => {
+    await delay(600);
+    const newPedido = {
+      ...pedidoData,
+      id: generateId(),
+      fecha: new Date().toISOString(),
+      estado: 'pendiente'
+    };
+    mockData.pedidos.unshift(newPedido);
+    return { success: true, data: newPedido };
+  },
+
+  registrarVentaLive: async (ventaData) => {
+    await delay(600);
+    const newPedido = {
+      id: generateId(),
+      numero_pedido: `PED-${Math.floor(Math.random() * 10000)}`,
+      cliente: { nombre: ventaData.usuario || 'Cliente Live' },
+      total: ventaData.total,
+      subtotal: ventaData.subtotal,
+      costo_envio: ventaData.costo_envio,
+      estado: 'pendiente_pago',
+      fecha: new Date().toISOString(),
+      items: ventaData.items || []
+    };
+    mockData.pedidos.unshift(newPedido);
+    return { success: true, data: newPedido };
+  },
+
+  updatePedido: async (id, pedidoData) => {
+    await delay(400);
+    const index = mockData.pedidos.findIndex(p => p.id === id);
+    if (index !== -1) {
+      mockData.pedidos[index] = { ...mockData.pedidos[index], ...pedidoData };
+      return { success: true, data: mockData.pedidos[index] };
+    }
+    return { success: false, error: 'Pedido no encontrado' };
+  }
+};
+
+export const clientesAPI = {
+  // Alias for compatibility
+  listar: async (params = {}) => {
+    await delay(400);
+    return { success: true, data: mockData.clientes };
+  },
+
+  eliminar: async (id) => {
+    await delay(300);
+    const index = mockData.clientes.findIndex(c => c.id === id);
+    if (index !== -1) {
+      mockData.clientes.splice(index, 1);
+      return { success: true, message: 'Cliente eliminado' };
+    }
+    return { success: false, error: 'Cliente no encontrado' };
+  },
+
+  getClientes: async () => {
+    await delay(400);
+    return { success: true, data: mockData.clientes };
+  },
+
+  createCliente: async (clienteData) => {
+    await delay(500);
+    const newCliente = { ...clienteData, id: generateId() };
+    mockData.clientes.push(newCliente);
+    return { success: true, data: newCliente };
+  },
+
+  updateCliente: async (id, clienteData) => {
+    await delay(400);
+    const index = mockData.clientes.findIndex(c => c.id === id);
+    if (index !== -1) {
+      mockData.clientes[index] = { ...mockData.clientes[index], ...clienteData };
+      return { success: true, data: mockData.clientes[index] };
+    }
+    return { success: false, error: 'Cliente no encontrado' };
+  }
+};
+
+export const auditoriaAPI = {
+  getLogs: async (filters = {}) => {
+    await delay(300);
+    return { success: true, data: mockData.auditoria };
+  },
+
+  getStats: async () => {
+    await delay(300);
+    return {
+      success: true,
+      data: {
+        totalUsuarios: mockData.usuarios.length,
+        totalEmpresas: mockData.empresas.length,
+        totalPedidos: mockData.pedidos.length,
+        ventasHoy: 1500.00
       }
-      
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          errorData = { 
-            message: `Error ${response.status}: ${response.statusText}` 
-          };
-        }
-        
-        const errorMessage = errorData.message || errorData.error || `Error ${response.status}: ${response.statusText}`;
-        console.error('❌ API Error:', errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
-      console.log('✅ Response:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Network Error:', error.message);
-      throw error;
-    }
+    };
   }
-
-  get(endpoint, options = {}) {
-    return this.request(endpoint, { ...options, method: 'GET' });
-  }
-
-  post(endpoint, data, options = {}) {
-    return this.request(endpoint, {
-      ...options,
-      method: 'POST',
-      body: data,
-    });
-  }
-
-  put(endpoint, data, options = {}) {
-    return this.request(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: data,
-    });
-  }
-
-  patch(endpoint, data, options = {}) {
-    return this.request(endpoint, {
-      ...options,
-      method: 'PATCH',
-      body: data,
-    });
-  }
-
-  delete(endpoint, options = {}) {
-    return this.request(endpoint, { ...options, method: 'DELETE' });
-  }
-
-  // === INVENTARIO ===
-  inventario = {
-    // SKUs
-    listarSKUs: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.categoria) queryParams.append('categoria', params.categoria);
-      if (params.stockBajo) queryParams.append('stockBajo', 'true');
-      if (params.activo !== undefined) queryParams.append('activo', params.activo.toString());
-      if (params.search) queryParams.append('search', params.search);
-
-      const queryString = queryParams.toString();
-      return this.get(`/inventario/skus/todos${queryString ? `?${queryString}` : ''}`);
-    },
-    
-    obtenerSKU: (skuId) => {
-      return this.get(`/inventario/sku/${skuId}`);
-    },
-    
-    crearProducto: (productoData) => {
-      return this.post('/inventario/sku', productoData);
-    },
-    
-    crearProductoDebug: (productoData) => {
-      return this.post('/inventario/sku-debug', productoData);
-    },
-    
-    actualizarProducto: (productoId, productoData) => {
-      return this.put(`/inventario/producto/${productoId}`, productoData);
-    },
-    
-    ajustarStock: (skuId, ajusteData) => {
-      return this.patch(`/inventario/sku/${skuId}/stock`, ajusteData);
-    },
-
-    // Movimientos
-    obtenerMovimientos: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.skuId) queryParams.append('skuId', params.skuId.toString());
-      if (params.tipoMovimiento) queryParams.append('tipoMovimiento', params.tipoMovimiento);
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-
-      const queryString = queryParams.toString();
-      return this.get(`/inventario/movimientos${queryString ? `?${queryString}` : ''}`);
-    },
-
-    // Gestión de estado
-    desactivarProducto: (productoId) => {
-      return this.patch(`/inventario/producto/${productoId}/desactivar`);
-    },
-
-    reactivarProducto: (productoId) => {
-      return this.patch(`/inventario/producto/${productoId}/reactivar`);
-    },
-
-    // Categorías (NUEVO)
-    listarCategorias: () => {
-      return this.get('/inventario/categorias');
-    },
-
-    crearCategoria: (categoriaData) => {
-      return this.post('/inventario/categorias', categoriaData);
-    },
-
-    actualizarCategoria: (categoriaId, categoriaData) => {
-      return this.put(`/inventario/categorias/${categoriaId}`, categoriaData);
-    },
-
-    eliminarCategoria: (categoriaId) => {
-      return this.delete(`/inventario/categorias/${categoriaId}`);
-    },
-
-    // Reportes (NUEVO)
-    obtenerReporteStock: () => {
-      return this.get('/inventario/reportes/stock');
-    },
-
-    obtenerReporteMovimientos: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-      if (params.categoria) queryParams.append('categoria', params.categoria);
-
-      const queryString = queryParams.toString();
-      return this.get(`/inventario/reportes/movimientos${queryString ? `?${queryString}` : ''}`);
-    }
-  };
-
-  // === CLIENTES ===
-  clientes = {
-    // Listado
-    listar: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.search) queryParams.append('search', params.search);
-      if (params.plataforma) queryParams.append('plataforma', params.plataforma);
-
-      const queryString = queryParams.toString();
-      return this.get(`/clientes/todos${queryString ? `?${queryString}` : ''}`);
-    },
-    
-    // Búsquedas
-    buscarOCrear: (usuario, plataforma) => {
-      return this.get(`/clientes/buscar?usuario=${encodeURIComponent(usuario)}&plataforma=${encodeURIComponent(plataforma)}`);
-    },
-    
-    buscarPorTermino: (termino) => {
-      return this.get(`/clientes/buscar/${encodeURIComponent(termino)}`);
-    },
-
-    buscarPorUsuario: (usuario, plataforma) => {
-      return this.get(`/clientes/usuario/${encodeURIComponent(usuario)}/${encodeURIComponent(plataforma)}`);
-    },
-    
-    // Operaciones CRUD
-    obtener: (id) => {
-      return this.get(`/clientes/${id}`);
-    },
-
-    obtenerCompleto: (id) => {
-      return this.get(`/clientes/${id}/completo`);
-    },
-    
-    crear: (data) => {
-      return this.post('/clientes', data);
-    },
-    
-    actualizar: (id, data) => {
-      return this.put(`/clientes/${id}`, data);
-    },
-    
-    eliminar: (id) => {
-      return this.delete(`/clientes/${id}`);
-    },
-
-    reactivar: (id) => {
-      return this.patch(`/clientes/${id}/reactivar`);
-    },
-
-    // Reportes y estadísticas (NUEVO)
-    obtenerEstadisticas: () => {
-      return this.get('/clientes/estadisticas');
-    },
-
-    obtenerClientesFrecuentes: (limite = 10) => {
-      return this.get(`/clientes/frecuentes?limite=${limite}`);
-    },
-
-    exportarClientes: (formato = 'json') => {
-      return this.get(`/clientes/exportar?formato=${formato}`);
-    },
-
-    // Segmentación (NUEVO)
-    obtenerSegmentos: () => {
-      return this.get('/clientes/segmentos');
-    },
-
-    obtenerClientesPorSegmento: (segmento) => {
-      return this.get(`/clientes/segmentos/${encodeURIComponent(segmento)}`);
-    }
-  };
-
-  // === PEDIDOS ===
-  pedidos = {
-    // Listado
-    listar: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.estado) queryParams.append('estado', params.estado);
-      if (params.clienteId) queryParams.append('clienteId', params.clienteId);
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-
-      const queryString = queryParams.toString();
-      return this.get(`/pedidos${queryString ? `?${queryString}` : ''}`);
-    },
-    
-    // Operaciones básicas
-    obtener: (id) => {
-      return this.get(`/pedidos/${id}`);
-    },
-    
-    crear: (pedidoData) => {
-      return this.post('/pedidos', pedidoData);
-    },
-
-    actualizar: (id, pedidoData) => {
-      return this.put(`/pedidos/${id}`, pedidoData);
-    },
-
-    eliminar: (id) => {
-      return this.delete(`/pedidos/${id}`);
-    },
-
-    // Estados
-    actualizarEstado: (id, nuevoEstado) => {
-      return this.patch(`/pedidos/${id}/estado`, { nuevoEstado });
-    },
-
-    obtenerHistorialEstados: (pedidoId) => {
-      return this.get(`/pedidos/${pedidoId}/historial-estados`);
-    },
-
-    // Live sales
-    registrarVentaLive: (data) => {
-      return this.post('/pedidos/live', data);
-    },
-
-    // Reportes y estadísticas
-    estadisticas: () => {
-      return this.get('/pedidos/estadisticas');
-    },
-
-    obtenerVentasPorPeriodo: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-      if (params.agruparPor) queryParams.append('agruparPor', params.agruparPor);
-
-      const queryString = queryParams.toString();
-      return this.get(`/pedidos/reportes/ventas-periodo${queryString ? `?${queryString}` : ''}`);
-    },
-
-    obtenerProductosMasVendidos: (limite = 10) => {
-      return this.get(`/pedidos/reportes/productos-mas-vendidos?limite=${limite}`);
-    },
-
-    // Notificaciones (NUEVO)
-    enviarNotificacion: (pedidoId, mensaje) => {
-      return this.post(`/pedidos/${pedidoId}/notificar`, { mensaje });
-    },
-
-    // Exportación (NUEVO)
-    exportarPedidos: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-      if (params.estado) queryParams.append('estado', params.estado);
-      if (params.formato) queryParams.append('formato', params.formato);
-
-      const queryString = queryParams.toString();
-      return this.get(`/pedidos/exportar${queryString ? `?${queryString}` : ''}`);
-    }
-  };
-
-  // === DASHBOARD === (NUEVO)
-  dashboard = {
-    obtenerResumen: () => {
-      return this.get('/dashboard/resumen');
-    },
-
-    obtenerMetricasVentas: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.rango) queryParams.append('rango', params.rango);
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-
-      const queryString = queryParams.toString();
-      return this.get(`/dashboard/metricas-ventas${queryString ? `?${queryString}` : ''}`);
-    },
-
-    obtenerKPI: () => {
-      return this.get('/dashboard/kpi');
-    },
-
-    obtenerAlertas: () => {
-      return this.get('/dashboard/alertas');
-    },
-
-    obtenerTendencias: (periodo = '30d') => {
-      return this.get(`/dashboard/tendencias?periodo=${periodo}`);
-    }
-  };
-
-  // === REPORTES AVANZADOS === (NUEVO)
-  reportes = {
-    // Reportes financieros
-    obtenerBalanceVentas: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-
-      const queryString = queryParams.toString();
-      return this.get(`/reportes/balance-ventas${queryString ? `?${queryString}` : ''}`);
-    },
-
-    obtenerMargenes: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.categoria) queryParams.append('categoria', params.categoria);
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-
-      const queryString = queryParams.toString();
-      return this.get(`/reportes/margenes${queryString ? `?${queryString}` : ''}`);
-    },
-
-    // Reportes de inventario
-    obtenerAnalisisStock: () => {
-      return this.get('/reportes/analisis-stock');
-    },
-
-    obtenerRotacionProductos: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.periodo) queryParams.append('periodo', params.periodo);
-
-      const queryString = queryParams.toString();
-      return this.get(`/reportes/rotacion-productos${queryString ? `?${queryString}` : ''}`);
-    },
-
-    // Reportes de clientes
-    obtenerComportamientoClientes: () => {
-      return this.get('/reportes/comportamiento-clientes');
-    },
-
-    obtenerFidelizacion: () => {
-      return this.get('/reportes/fidelizacion');
-    }
-  };
-
-  // === CONFIGURACIÓN === (NUEVO)
-  configuracion = {
-    // Configuración general
-    obtenerConfig: () => {
-      return this.get('/configuracion');
-    },
-
-    actualizarConfig: (configData) => {
-      return this.put('/configuracion', configData);
-    },
-
-    // Configuración de negocio
-    obtenerInfoNegocio: () => {
-      return this.get('/configuracion/negocio');
-    },
-
-    actualizarInfoNegocio: (negocioData) => {
-      return this.put('/configuracion/negocio', negocioData);
-    },
-
-    // Configuración de notificaciones
-    obtenerNotificaciones: () => {
-      return this.get('/configuracion/notificaciones');
-    },
-
-    actualizarNotificaciones: (notificacionesData) => {
-      return this.put('/configuracion/notificaciones', notificacionesData);
-    }
-  };
-
-  // === BACKUP Y EXPORTACIÓN === (NUEVO)
-  sistema = {
-    // Health check
-    health: () => {
-      return this.get('/health');
-    },
-    
-    // Información del sistema
-    info: () => {
-      return this.get('/');
-    },
-
-    // Backup
-    crearBackup: () => {
-      return this.post('/sistema/backup');
-    },
-
-    listarBackups: () => {
-      return this.get('/sistema/backups');
-    },
-
-    restaurarBackup: (backupId) => {
-      return this.post(`/sistema/backups/${backupId}/restaurar`);
-    },
-
-    // Logs
-    obtenerLogs: (params = {}) => {
-      const queryParams = new URLSearchParams();
-      
-      if (params.nivel) queryParams.append('nivel', params.nivel);
-      if (params.fechaDesde) queryParams.append('fechaDesde', params.fechaDesde);
-      if (params.fechaHasta) queryParams.append('fechaHasta', params.fechaHasta);
-      if (params.limite) queryParams.append('limite', params.limite);
-
-      const queryString = queryParams.toString();
-      return this.get(`/sistema/logs${queryString ? `?${queryString}` : ''}`);
-    },
-
-    // Limpieza
-    limpiarCache: () => {
-      return this.post('/sistema/limpiar-cache');
-    },
-
-    optimizarBD: () => {
-      return this.post('/sistema/optimizar-bd');
-    }
-  };
-
-  // === UTILIDADES === (NUEVO)
-  utilidades = {
-    // Importación de datos
-    importarClientes: (archivoData) => {
-      return this.post('/utilidades/importar/clientes', archivoData);
-    },
-
-    importarProductos: (archivoData) => {
-      return this.post('/utilidades/importar/productos', archivoData);
-    },
-
-    importarPedidos: (archivoData) => {
-      return this.post('/utilidades/importar/pedidos', archivoData);
-    },
-
-    // Plantillas
-    descargarPlantilla: (tipo) => {
-      return this.get(`/utilidades/plantillas/${tipo}`);
-    },
-
-    // Sincronización
-    sincronizarPlataformas: () => {
-      return this.post('/utilidades/sincronizar');
-    },
-
-    // Busqueda global
-    busquedaGlobal: (termino) => {
-      return this.get(`/utilidades/busqueda-global?q=${encodeURIComponent(termino)}`);
-    }
-  };
-}
-
-const apiInstance = new ApiService();
-export default apiInstance;
+};
+
+export default {
+  auth: authAPI,
+  empresas: empresasAPI,
+  usuarios: usuariosAPI,
+  inventario: inventarioAPI,
+  pedidos: pedidosAPI,
+  clientes: clientesAPI,
+  auditoria: auditoriaAPI
+};
